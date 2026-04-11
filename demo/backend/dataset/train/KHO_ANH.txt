@@ -1,0 +1,24 @@
+KHO ẢNH HUẤN LUYỆN (dataset train)
+==================================
+
+Đường dẫn thư mục gốc:
+  backend/dataset/train/
+
+Cấu trúc (mỗi thư mục = một lớp, bỏ ảnh .jpg / .png / .jpeg vào đúng thư mục):
+
+  nhua-pet/    → ảnh nhựa PET, chai nhựa...
+  giay/        → ảnh giấy, bìa carton...
+  kim-loai/    → ảnh kim loại (nhôm, sắt...)
+  thuy-tinh/   → ảnh thủy tinh...
+  nhua-hdpe/   → ảnh nhựa HDPE, hộp cứng...
+
+Ánh xạ sang tên trong hệ thống: xem file ../mapping.json
+
+Huấn luyện model (sau khi có đủ ảnh, tối thiểu ~20 ảnh tổng hoặc nhiều hơn):
+  cd backend/dataset/scripts
+  pip install -r requirements.txt
+  python train.py
+
+Model lưu tại: backend/models/waste_classifier.pt
+
+Lưu ý: Dataset lớn nên không commit lên Git; chỉ giữ cấu trúc thư mục + .gitkeep.

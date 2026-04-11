@@ -1,0 +1,20 @@
+{
+  "name": "smart-recycling-system",
+  "version": "1.0.0",
+  "description": "Hệ thống thu gom rác tái chế thông minh tích hợp AI",
+  "private": true,
+  "workspaces": ["backend", "frontend"],
+  "scripts": {
+    "db:start": "docker compose -f db/docker-compose.yml up -d",
+    "db:stop": "docker compose -f db/docker-compose.yml down",
+    "dev": "npx --yes kill-port 3001 5173 && concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "setup": "npm install && cd backend && npm run prisma:generate",
+    "setup:db": "npm run db:start",
+    "build": "cd backend && npm run build && cd ../frontend && npm run build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

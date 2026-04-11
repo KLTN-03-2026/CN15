@@ -1,0 +1,95 @@
+================================================================================
+TẠI SAO "KHÔNG TÌM THẤY" DATASET ĐÚNG TÊN DỰ ÁN?
+================================================================================
+
+Hệ thống KHÔNG yêu cầu một file dataset tên riêng (không có gói "Thu gom rac KLTN.zip").
+
+Chỉ cần: ảnh thật hoặc ảnh từ nguồn mở, xếp vào ĐÚNG 5 thư mục:
+
+  backend/dataset/train/nhua-pet/
+  backend/dataset/train/giay/
+  backend/dataset/train/kim-loai/
+  backend/dataset/train/thuy-tinh/
+  backend/dataset/train/nhua-hdpe/
+
+Định dạng: .jpg / .png / .jpeg
+
+Bất kỳ bộ ảnh phân loại rác / tái chế nào (TrashNet, Kaggle, tự chụp) đều dùng được
+sau khi bạn copy ảnh vào đúng thư mục (hoặc dùng script map sẵn trong scripts/).
+
+
+================================================================================
+CÁCH 1 — TỰ TẢI VỀ ĐÚNG THƯ MỤC (KHUYẾN NGHỊ, KHÔNG CẦN TÌM FILE THỦ CÔNG)
+================================================================================
+
+Mở terminal tại thư mục:
+
+  backend/dataset/scripts
+
+Cài và chạy (tải TrashNet qua Hugging Face, tự chia vào train/):
+
+  pip install datasets Pillow
+  python tai_dataset.py --limit 200
+
+Sau đó huấn luyện:
+
+  pip install -r requirements.txt
+  python train.py
+
+(Lần đầu tải có thể vài GB, cần mạng ổn định.)
+
+
+================================================================================
+CÁCH 2 — TỰ TÌM TRÊN KAGGLE / GOOGLE
+================================================================================
+
+Từ khóa tìm kiếm (copy vào ô tìm của Kaggle hoặc Google):
+
+  - trashnet
+  - waste classification dataset
+  - recyclable waste image dataset
+  - garbage classification dataset
+
+Link Kaggle ví dụ (cần tài khoản Kaggle, tải file .zip):
+
+  https://www.kaggle.com/datasets/feyzazkefe/trashnet
+
+Sau khi giải nén, map thư mục gốc của TrashNet → thư mục train/ như sau:
+
+  glass      → thuy-tinh
+  paper, cardboard → giay
+  plastic    → nhua-pet
+  metal      → kim-loai
+  trash      → có thể bỏ qua hoặc không dùng
+  (HDPE)     → TrashNet không có sẵn → bổ sung ảnh HDPE vào nhua-hdpe từ nguồn khác
+
+
+================================================================================
+CÁCH 3 — CHƯA CÓ DATASET THẬT VẪN CHẠY THỬ TRAIN
+================================================================================
+
+Tạo ảnh mẫu giả (mỗi loại 20 ảnh, để test pipeline train):
+
+  cd backend/dataset/scripts
+  pip install Pillow
+  python tao_mau.py
+  python train.py
+
+
+================================================================================
+CÁCH 4 — KHÔNG CẦN DATASET LOCAL CHO CHỨC NĂNG AI TRÊN WEB
+================================================================================
+
+Nếu trong file .env của backend có OPENAI_API_KEY, API /api/ai/analyze-waste dùng
+GPT Vision — không bắt buộc phải train model hay có thư mục train/.
+
+Dataset train/ chỉ cần khi bạn muốn model chạy LOCAL (offline) qua du_doan.py.
+
+
+================================================================================
+FILE THAM CHIẾU TRONG PROJECT
+================================================================================
+
+  mapping.json     — map tên lớp dataset → tên loại hệ thống
+  train/KHO_ANH.txt — nhắc lại cấu trúc thư mục
+  README.md         — mô tả tổng quan + thêm link dataset công khai

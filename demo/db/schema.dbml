@@ -1,0 +1,184 @@
+// ======================
+// HỆ THỐNG THU GOM RÁC TÁI CHẾ THÔNG MINH TÍCH HỢP AI
+// Schema DBML - Tách Admin/Nhân viên, quan hệ N-N
+// ======================
+
+// ======================
+// KHÁCH HÀNG (Customer)
+// ======================
+Table khach_hangs {
+  id text [pk]
+  email varchar [unique, not null]
+  mat_khau varchar [not null]
+  ho_ten varchar [not null]
+  so_dien_thoai varchar
+  dia_chi text
+  avatar varchar
+  bi_khoa boolean [default: false]
+  diem int [default: 0]
+  ngay_tao datetime [not null]
+  ngay_cap_nhat datetime [not null]
+}
+
+// ======================
+// NHÂN VIÊN (Staff)
+// ======================
+Table nhan_viens {
+  id text [pk]
+  email varchar [unique, not null]
+  mat_khau varchar [not null]
+  ho_ten varchar [not null]
+  so_dien_thoai varchar
+  dia_chi text
+  avatar varchar
+  bi_khoa boolean [default: false]
+  ngay_tao datetime [not null]
+  ngay_cap_nhat datetime [not null]
+}
+
+// ======================
+// QUẢN TRỊ VIÊN (Admin)
+// ======================
+Table quan_tri_viens {
+  id text [pk]
+  email varchar [unique, not null]
+  mat_khau varchar [not null]
+  ho_ten varchar [not null]
+  so_dien_thoai varchar
+  bi_khoa boolean [default: false]
+  ngay_tao datetime [not null]
+  ngay_cap_nhat datetime [not null]
+}
+
+// ======================
+// ĐẶT LẠI MẬT KHẨU (Khách hàng)
+// ======================
+Table password_resets {
+  id text [pk]
+  id_khach_hang text [not null]
+  token varchar [unique, not null]
+  het_han datetime [not null]
+  ngay_tao datetime [not null]
+}
+
+Ref: password_resets.id_khach_hang > khach_hangs.id
+
+// ======================
+// LOẠI RÁC
+// ======================
+Table loai_racs {
+  id_loai_rac text [pk]
+  ten_loai varchar [not null]
+  mo_ta text
+  diem_tren_kg decimal [not null, default: 0]
+  hoat_dong boolean [default: true]
+  ngay_tao datetime [not null]
+  ngay_cap_nhat datetime [not null]
+}
+
+// ======================
+// YÊU CẦU THU GOM
+// ======================
+Table yeu_cau_thu_goms {
+  id_yeu_cau text [pk]
+  id_khach_hang text [not null]
+  dia_chi text [not null]
+  so_dien_thoai varchar
+  ngay_muon_thu_gom datetime
+  ghi_chu text
+  url_anh varchar
+  trang_thai varchar [not null, default: 'PENDING']
+  id_nhan_vien text
+  diem_tich_luy int
+  ngay_tao datetime [not null]
+  ngay_cap_nhat datetime [not null]
+  ngay_hoan_thanh datetime
+}
+
+Ref: yeu_cau_thu_goms.id_khach_hang > khach_hangs.id
+Ref: yeu_cau_thu_goms.id_nhan_vien > nhan_viens.id
+
+// ======================
+// YÊU CẦU - LOẠI RÁC (N-N: 1 yêu cầu nhiều loại rác, 1 loại rác nhiều yêu cầu)
+// ======================
+Table yeu_cau_loai_racs {
+  id text [pk]
+  id_yeu_cau text [not null]
+  id_loai_rac text [not null]
+  so_luong decimal [not null]
+  so_luong_uoc_tinh decimal
+  khoi_luong_xac_minh decimal
+  id_loai_rac_xac_minh text
+}
+
+Ref: yeu_cau_loai_racs.id_yeu_cau > yeu_cau_thu_goms.id_yeu_cau
+Ref: yeu_cau_loai_racs.id_loai_rac > loai_racs.id_loai_rac
+Ref: yeu_cau_loai_racs.id_loai_rac_xac_minh > loai_racs.id_loai_rac
+
+// ======================
+// TRẠNG THÁI (danh mục)
+// ======================
+Table trang_thais {
+  id_trang_thai varchar [pk]
+  ten_trang_thai varchar [not null]
+  mo_ta text
+}
+
+// ======================
+// LỊCH SỬ TRẠNG THÁI - YÊU CẦU (N-N: 1 yêu cầu nhiều lịch sử, 1 trạng thái nhiều yêu cầu)
+// ======================
+Table lich_su_trang_thais {
+  id text [pk]
+  id_yeu_cau text [not null]
+  id_trang_thai varchar [not null]
+  ghi_chu text
+  ngay_tao datetime [not null]
+}
+
+Ref: lich_su_trang_thais.id_yeu_cau > yeu_cau_thu_goms.id_yeu_cau
+Ref: lich_su_trang_thais.id_trang_thai > trang_thais.id_trang_thai
+
+// ======================
+// PHẦN THƯỞNG
+// ======================
+Table phan_thuongs {
+  id_phan_thuong text [pk]
+  ten_phan_thuong varchar [not null]
+  mo_ta text
+  diem_doi int [not null]
+  so_luong_con int [default: 0]
+  url_anh varchar
+  hoat_dong boolean [default: true]
+  ngay_tao datetime [not null]
+  ngay_cap_nhat datetime [not null]
+}
+
+// ======================
+// LỊCH SỬ ĐỔI THƯỞNG
+// ======================
+Table lich_su_doi_thuongs {
+  id text [pk]
+  id_khach_hang text [not null]
+  id_phan_thuong text [not null]
+  diem_su_dung int [not null]
+  trang_thai varchar [default: 'completed']
+  ngay_tao datetime [not null]
+}
+
+Ref: lich_su_doi_thuongs.id_khach_hang > khach_hangs.id
+Ref: lich_su_doi_thuongs.id_phan_thuong > phan_thuongs.id_phan_thuong
+
+// ======================
+// GIAO DỊCH ĐIỂM
+// ======================
+Table giao_dich_diems {
+  id text [pk]
+  id_khach_hang text [not null]
+  so_diem int [not null]
+  loai varchar [not null]
+  mo_ta text
+  id_tham_chieu text
+  ngay_tao datetime [not null]
+}
+
+Ref: giao_dich_diems.id_khach_hang > khach_hangs.id

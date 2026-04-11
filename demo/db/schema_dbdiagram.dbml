@@ -1,0 +1,198 @@
+// =============================================================================
+// HỆ THỐNG THU GOM RÁC TÁI CHẾ THÔNG MINH — CSDL (PostgreSQL)
+// Cập nhật theo docs/dac_ta_use_case.md (UC01–UC16)
+// Tổng 10 bảng: phân quyền UC15 chỉ qua vai_tro (nguoi_dungs) + admins — không RBAC chi tiết.
+// Dán vào: https://dbdiagram.io/d
+// =============================================================================
+// ÁNH XẠ NHANH UC → BẢNG
+// UC01 Đăng ký          → nguoi_dungs
+// UC02 Đăng nhập        → nguoi_dungs, admins, bi_khoa
+// UC03 Tài khoản KH     → nguoi_dungs
+// UC04 Tạo yêu cầu      → yeu_cau_thu_goms, loai_racs (url_anh = gợi ý AI)
+// UC05 Theo dõi / hủy   → yeu_cau_thu_goms, lich_su_trang_thais
+// UC06 Xem điểm        → nguoi_dungs.diem, giao_dich_diems, loai_racs
+// UC07 Đổi thưởng      → phan_thuongs, lich_su_doi_thuongs, giao_dich_diems, nguoi_dungs
+// UC08 Thống kê KH     → tổng hợp từ yeu_cau_thu_goms, giao_dich_diems
+// UC09 Nhận yêu cầu    → yeu_cau_thu_goms (id_nhan_vien), lich_su_trang_thais
+// UC10 Thu gom xác minh→ yeu_cau_thu_goms, loai_racs, giao_dich_diems, thong_baos
+// UC11 Quên MK         → password_resets → nguoi_dungs (KH/Staff; Admin bảng riêng)
+// UC12 Báo cáo NV      → tổng hợp yeu_cau_thu_goms, nguoi_dungs (STAFF)
+// UC13 QL người dùng   → nguoi_dungs, admins (id_admin_khoa)
+// UC14 QL loại rác     → loai_racs
+// UC15 Phân quyền      → nguoi_dungs.vai_tro; Admin tách bảng admins (không bảng quyền chi tiết)
+// UC16 QL phần thưởng  → phan_thuongs
+// =============================================================================
+
+Project smart_recycling {
+  database_type: 'PostgreSQL'
+  Note: 'Thu gom rác, AI gợi ý loại (map loai_racs), tích điểm đổi thưởng'
+}
+
+// -----------------------------------------------------------------------------
+// BẢNG 1: NGƯỜI DÙNG — Khách hàng + Nhân viên (UC01, UC02, UC03, UC09, UC13, UC15)
+// -----------------------------------------------------------------------------
+Table nguoi_dungs {
+  id varchar [pk]
+  email varchar [unique, not null]
+  mat_khau varchar [not null]
+  ho_ten varchar [not null]
+  so_dien_thoai varchar
+  dia_chi varchar
+  avatar varchar
+  vai_tro varchar [not null, default: 'CUSTOMER']
+  diem int [default: 0]
+  bi_khoa boolean [default: false]
+  id_admin_khoa varchar
+  ngay_tao timestamp [not null]
+  ngay_cap_nhat timestamp [not null]
+  Note: 'vai_tro: CUSTOMER | STAFF. UC02: bi_khoa. UC13: id_admin_khoa khi Admin khóa. UC15: phân quyền theo vai_tro (không RBAC chi tiết).'
+}
+
+// -----------------------------------------------------------------------------
+// BẢNG 2: ADMIN (UC02 Admin đăng nhập, UC13 quản trị)
+// -----------------------------------------------------------------------------
+Table admins {
+  id varchar [pk]
+  email varchar [unique, not null]
+  mat_khau varchar [not null]
+  ho_ten varchar [not null]
+  ngay_tao timestamp [not null]
+  ngay_cap_nhat timestamp [not null]
+  Note: 'Tách bảng. UC11 quên MK trong đặc tả: KH/Staff (nguoi_dungs); reset Admin có thể mở rộng sau.'
+}
+
+// -----------------------------------------------------------------------------
+// BẢNG 3: ĐẶT LẠI MẬT KHẨU — UC11
+// -----------------------------------------------------------------------------
+Table password_resets {
+  id varchar [pk]
+  id_nguoi_dung varchar [not null]
+  token varchar [unique, not null]
+  het_han timestamp [not null]
+  ngay_tao timestamp [not null]
+  Note: 'UC11: token có hạn; cập nhật mat_khau trên nguoi_dungs rồi xóa token.'
+}
+
+// -----------------------------------------------------------------------------
+// BẢNG 4: LOẠI RÁC — UC04, UC06 (quy đổi), UC14
+// -----------------------------------------------------------------------------
+Table loai_racs {
+  id_loai_rac varchar [pk]
+  ten_loai varchar [not null]
+  mo_ta varchar
+  diem_tren_kg decimal [not null, default: 0]
+  hoat_dong boolean [default: true]
+  ngay_tao timestamp [not null]
+  ngay_cap_nhat timestamp [not null]
+  Note: 'UC04: AI gợi ý map sang id_loai_rac. UC14: CRUD, điểm/kg.'
+}
+
+// -----------------------------------------------------------------------------
+// BẢNG 5: YÊU CẦU THU GOM — UC04, UC05, UC09, UC10
+// -----------------------------------------------------------------------------
+Table yeu_cau_thu_goms {
+  id_yeu_cau varchar [pk]
+  id_khach_hang varchar [not null]
+  id_loai_rac varchar [not null]
+  id_loai_rac_xac_minh varchar
+  id_nhan_vien varchar
+  so_luong decimal [not null]
+  so_luong_uoc_tinh decimal
+  khoi_luong_xac_minh decimal
+  dia_chi varchar [not null]
+  so_dien_thoai varchar
+  ngay_muon_thu_gom timestamp
+  ghi_chu varchar
+  url_anh varchar
+  trang_thai varchar [not null, default: 'PENDING']
+  diem_tich_luy int
+  ngay_tao timestamp [not null]
+  ngay_cap_nhat timestamp [not null]
+  ngay_hoan_thanh timestamp
+  Note: 'PENDING | COLLECTING | COMPLETED | CANCELLED. UC10: id_loai_rac_xac_minh, khoi_luong_xac_minh, diem_tich_luy.'
+}
+
+// -----------------------------------------------------------------------------
+// BẢNG 6: LỊCH SỬ TRẠNG THÁI — UC05, UC09, UC10
+// -----------------------------------------------------------------------------
+Table lich_su_trang_thais {
+  id varchar [pk]
+  id_yeu_cau varchar [not null]
+  trang_thai varchar [not null]
+  ghi_chu varchar
+  ngay_tao timestamp [not null]
+  Note: 'Mỗi lần đổi trạng thái yêu cầu (audit).'
+}
+
+// -----------------------------------------------------------------------------
+// BẢNG 7: PHẦN THƯỞNG — UC07, UC16
+// -----------------------------------------------------------------------------
+Table phan_thuongs {
+  id_phan_thuong varchar [pk]
+  ten_phan_thuong varchar [not null]
+  mo_ta varchar
+  diem_doi int [not null]
+  so_luong_con int [default: 0]
+  url_anh varchar
+  hoat_dong boolean [default: true]
+  ngay_tao timestamp [not null]
+  ngay_cap_nhat timestamp [not null]
+  Note: 'UC07: trừ điểm, so_luong_con. UC16: CRUD.'
+}
+
+// -----------------------------------------------------------------------------
+// BẢNG 8: LỊCH SỬ ĐỔI THƯỞNG — UC07
+// -----------------------------------------------------------------------------
+Table lich_su_doi_thuongs {
+  id varchar [pk]
+  id_nguoi_dung varchar [not null]
+  id_phan_thuong varchar [not null]
+  diem_su_dung int [not null]
+  trang_thai varchar [default: 'completed']
+  ngay_tao timestamp [not null]
+  Note: 'Mỗi lần đổi thưởng thành công.'
+}
+
+// -----------------------------------------------------------------------------
+// BẢNG 9: GIAO DỊCH ĐIỂM — UC06, UC07, UC10 (cộng điểm), UC13 (điều chỉnh)
+// -----------------------------------------------------------------------------
+Table giao_dich_diems {
+  id varchar [pk]
+  id_nguoi_dung varchar [not null]
+  so_diem int [not null]
+  loai varchar [not null]
+  mo_ta varchar
+  id_tham_chieu varchar
+  ngay_tao timestamp [not null]
+  Note: 'loai: earn | redeem | admin_adjust. id_tham_chieu: id_yeu_cau / id giao dịch đổi / …'
+}
+
+// -----------------------------------------------------------------------------
+// BẢNG 10: THÔNG BÁO — UC10 (gửi cho KH sau thu gom)
+// -----------------------------------------------------------------------------
+Table thong_baos {
+  id varchar [pk]
+  id_nguoi_dung varchar [not null]
+  loai varchar [not null]
+  tieu_de varchar [not null]
+  noi_dung varchar [not null]
+  id_tham_chieu varchar
+  da_doc boolean [default: false]
+  ngay_tao timestamp [not null]
+  Note: 'id_tham_chieu có thể là id_yeu_cau.'
+}
+
+// =============================================================================
+// QUAN HỆ (Ref)
+// =============================================================================
+Ref: nguoi_dungs.id_admin_khoa - admins.id
+Ref: password_resets.id_nguoi_dung > nguoi_dungs.id
+Ref: yeu_cau_thu_goms.id_khach_hang > nguoi_dungs.id
+Ref: yeu_cau_thu_goms.id_nhan_vien - nguoi_dungs.id
+Ref: yeu_cau_thu_goms.id_loai_rac > loai_racs.id_loai_rac
+Ref: yeu_cau_thu_goms.id_loai_rac_xac_minh - loai_racs.id_loai_rac
+Ref: lich_su_trang_thais.id_yeu_cau > yeu_cau_thu_goms.id_yeu_cau
+Ref: lich_su_doi_thuongs.id_nguoi_dung > nguoi_dungs.id
+Ref: lich_su_doi_thuongs.id_phan_thuong > phan_thuongs.id_phan_thuong
+Ref: giao_dich_diems.id_nguoi_dung > nguoi_dungs.id
+Ref: thong_baos.id_nguoi_dung > nguoi_dungs.id

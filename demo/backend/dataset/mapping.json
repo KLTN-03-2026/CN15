@@ -1,0 +1,22 @@
+{
+  "description": "Ánh xạ danh mục trong dataset sang tên loại rác trong hệ thống",
+  "dataset_to_waste_type": {
+    "plastic": "Nhựa PET",
+    "pet": "Nhựa PET",
+    "bottle": "Nhựa PET",
+    "paper": "Giấy",
+    "cardboard": "Giấy",
+    "metal": "Kim loại",
+    "aluminum": "Kim loại",
+    "glass": "Thủy tinh",
+    "hdpe": "Nhựa HDPE",
+    "hard_plastic": "Nhựa HDPE"
+  },
+  "waste_type_folders": {
+    "nhua-pet": "Nhựa PET",
+    "giay": "Giấy",
+    "kim-loai": "Kim loại",
+    "thuy-tinh": "Thủy tinh",
+    "nhua-hdpe": "Nhựa HDPE"
+  }
+}

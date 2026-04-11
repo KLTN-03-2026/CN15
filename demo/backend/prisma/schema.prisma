@@ -1,0 +1,165 @@
+// Prisma schema - Hệ thống thu gom rác tái chế thông minh
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  fullName  String
+  phone     String?
+  address   String?
+  avatar    String?
+  role      String   @default("CUSTOMER")  // CUSTOMER | STAFF | ADMIN
+  isLocked  Boolean  @default(false)
+  points    Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Quan hệ
+  collectionRequests  CollectionRequest[]
+  staffRequests       CollectionRequest[] @relation("StaffRequests")
+  pointTransactions  PointTransaction[]
+  rewardRedemptions   RewardRedemption[]
+  passwordResets      PasswordReset[]
+  notifications       Notification[]
+}
+
+// Thông báo cho khách hàng
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String   // REQUEST_ACCEPTED | REQUEST_COMPLETED
+  title       String
+  message     String
+  referenceId String?  // ID yêu cầu thu gom
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, isRead])
+}
+
+// Token đặt lại mật khẩu
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId   String
+  token    String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+}
+
+// Loại rác
+model WasteType {
+  id          String   @id @default(cuid())
+  name        String   // Tên loại rác (nhựa, giấy, kim loại...)
+  description String?
+  pointsPerKg Float    @default(0)  // Điểm/1kg
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  collectionRequests CollectionRequest[]
+}
+
+// Yêu cầu thu gom
+model CollectionRequest {
+  id                    String    @id @default(cuid())
+  customerId            String
+  wasteTypeId           String
+  quantity              Float     // Số lượng (kg)
+  estimatedQuantity     Float?    // Ước tính ban đầu
+  address               String
+  phone                 String?   // Số điện thoại liên hệ thu gom
+  desiredCollectionDate DateTime? // Ngày muốn tới thu gom
+  note                  String?
+  imageUrl              String?   // Ảnh rác (AI nhận diện)
+  status          String       @default("PENDING")  // PENDING | COLLECTING | COMPLETED | CANCELLED
+  staffId         String?      // Nhân viên nhận xử lý
+  verifiedWeight  Float?       // Khối lượng thực tế xác minh
+  verifiedTypeId  String?      // Loại rác xác minh
+  pointsEarned    Int?         // Điểm tích lũy (khi hoàn thành)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  completedAt     DateTime?
+
+  customer  User      @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  wasteType WasteType @relation(fields: [wasteTypeId], references: [id])
+  staff     User?     @relation("StaffRequests", fields: [staffId], references: [id])
+
+  statusHistory StatusHistory[]
+}
+
+// Lịch sử trạng thái
+model StatusHistory {
+  id         String        @id @default(cuid())
+  requestId  String
+  status     String
+  note       String?
+  createdAt  DateTime      @default(now())
+
+  request CollectionRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+
+  @@index([requestId])
+}
+
+// Phần thưởng đổi điểm
+model Reward {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  pointsCost  Int      // Điểm cần đổi
+  quantity    Int      @default(0)  // Số lượng còn
+  imageUrl    String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  redemptions RewardRedemption[]
+}
+
+// Lịch sử đổi thưởng
+model RewardRedemption {
+  id               String   @id @default(cuid())
+  userId           String
+  rewardId         String
+  pointsSpent      Int
+  status           String   @default("completed")  // completed, cancelled
+  confirmationCode String   @default("")
+  fulfillmentNote  String?
+  createdAt        DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reward Reward @relation(fields: [rewardId], references: [id])
+
+  @@index([userId])
+}
+
+// Giao dịch điểm (tích điểm + sử dụng)
+model PointTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  amount      Int      // Dương: cộng điểm, Âm: trừ điểm
+  type        String   // "earn" | "redeem" | "admin_adjust"
+  description String?
+  referenceId String?  // ID yêu cầu hoặc đổi thưởng
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}

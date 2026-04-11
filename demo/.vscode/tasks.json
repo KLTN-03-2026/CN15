@@ -1,0 +1,29 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Mở Chrome localhost:5173",
+      "type": "shell",
+      "command": "start",
+      "args": ["chrome", "http://localhost:5173"],
+      "windows": {
+        "command": "start",
+        "args": ["chrome", "http://localhost:5173"]
+      },
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent" }
+    },
+    {
+      "label": "Mở trình duyệt mặc định",
+      "type": "shell",
+      "command": "start",
+      "args": ["http://localhost:5173"],
+      "windows": {
+        "command": "start",
+        "args": ["http://localhost:5173"]
+      },
+      "problemMatcher": [],
+      "presentation": { "reveal": "silent" }
+    }
+  ]
+}
