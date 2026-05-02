@@ -7,15 +7,21 @@ const NHAN_PHAN = { fullName: 'Họ tên', email: 'Email', phone: 'Số điện 
 export default function DangKy() {
   const [form, setForm] = useState({ email: '', password: '', fullName: '', phone: '', address: '' });
   const [loi, setLoi] = useState('');
+  const [thanhCong, setThanhCong] = useState('');
   const { register } = useAuth();
   const navigate = useNavigate();
 
   const xuLyGui = async (e) => {
     e.preventDefault();
     setLoi('');
+    setThanhCong('');
     try {
       await register(form);
-      navigate('/');
+      setThanhCong('Đăng ký thành công. Vui lòng đăng nhập để tiếp tục.');
+      navigate('/dang-nhap', {
+        replace: true,
+        state: { thongBaoThanhCong: 'Đăng ký thành công. Vui lòng đăng nhập để tiếp tục.' },
+      });
     } catch (ex) {
       const msg = ex.message || 'Đăng ký thất bại';
       setLoi(msg.includes('fetch') || msg.includes('Failed') ? 'Không kết nối được server. Kiểm tra backend đã chạy (port 3001).' : msg);
@@ -29,6 +35,7 @@ export default function DangKy() {
         <h1 className="khung-dang-nhap__tieu-de">Đăng ký tài khoản</h1>
         <form onSubmit={xuLyGui} className="form-gap">
           {loi && <div className="thong-bao-loi">{loi}</div>}
+          {thanhCong && <div className="thong-bao-thanh-cong">{thanhCong}</div>}
           {Object.keys(NHAN_PHAN).map((key) => (
             <div key={key} className="form-group">
               <label className="form-group__nhan">{NHAN_PHAN[key]}</label>

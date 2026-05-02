@@ -106,7 +106,12 @@ export const yeuCauThuGom = {
   danhSach: (trangThai, loc) => {
     const params = new URLSearchParams();
     if (trangThai) params.set('status', trangThai);
+    if (loc?.createdFrom) params.set('createdFrom', loc.createdFrom);
+    if (loc?.createdTo) params.set('createdTo', loc.createdTo);
     if (loc?.date) params.set('date', loc.date);
+    if (loc?.period) params.set('period', loc.period);
+    if (loc?.fromDate) params.set('fromDate', loc.fromDate);
+    if (loc?.toDate) params.set('toDate', loc.toDate);
     if (loc?.address) params.set('address', loc.address);
     if (loc?.wasteTypeId) params.set('wasteTypeId', loc.wasteTypeId);
     return guiYeuCau(`/collections${params.toString() ? `?${params}` : ''}`);
@@ -114,7 +119,12 @@ export const yeuCauThuGom = {
   list: (trangThai, loc) => {
     const params = new URLSearchParams();
     if (trangThai) params.set('status', trangThai);
+    if (loc?.createdFrom) params.set('createdFrom', loc.createdFrom);
+    if (loc?.createdTo) params.set('createdTo', loc.createdTo);
     if (loc?.date) params.set('date', loc.date);
+    if (loc?.period) params.set('period', loc.period);
+    if (loc?.fromDate) params.set('fromDate', loc.fromDate);
+    if (loc?.toDate) params.set('toDate', loc.toDate);
     if (loc?.address) params.set('address', loc.address);
     if (loc?.wasteTypeId) params.set('wasteTypeId', loc.wasteTypeId);
     return guiYeuCau(`/collections${params.toString() ? `?${params}` : ''}`);
@@ -160,10 +170,38 @@ export const ai = {
 };
 
 export const thongKe = {
-  lay: (chuKy) => guiYeuCau(chuKy ? `/stats?period=${chuKy}` : '/stats'),
-  get: (chuKy) => guiYeuCau(chuKy ? `/stats?period=${chuKy}` : '/stats'),
-  /** @deprecated Cùng GET /stats — backend phân quyền theo JWT (CUSTOMER = của tôi) */
-  layCuaToi: (chuKy) => guiYeuCau(chuKy ? `/stats?period=${chuKy}` : '/stats'),
+  lay: (boLoc) => {
+    if (typeof boLoc === 'string') return guiYeuCau(boLoc ? `/stats?period=${boLoc}` : '/stats');
+    const params = new URLSearchParams();
+    if (boLoc?.period) params.set('period', boLoc.period);
+    if (boLoc?.fromDate) params.set('fromDate', boLoc.fromDate);
+    if (boLoc?.toDate) params.set('toDate', boLoc.toDate);
+    return guiYeuCau(`/stats${params.toString() ? `?${params}` : ''}`);
+  },
+  get: (boLoc) => {
+    if (typeof boLoc === 'string') return guiYeuCau(boLoc ? `/stats?period=${boLoc}` : '/stats');
+    const params = new URLSearchParams();
+    if (boLoc?.period) params.set('period', boLoc.period);
+    if (boLoc?.fromDate) params.set('fromDate', boLoc.fromDate);
+    if (boLoc?.toDate) params.set('toDate', boLoc.toDate);
+    return guiYeuCau(`/stats${params.toString() ? `?${params}` : ''}`);
+  },
+  layCuaToi: (boLoc) => {
+    if (typeof boLoc === 'string') return guiYeuCau(boLoc ? `/stats/me?period=${boLoc}` : '/stats/me');
+    const params = new URLSearchParams();
+    if (boLoc?.period) params.set('period', boLoc.period);
+    if (boLoc?.fromDate) params.set('fromDate', boLoc.fromDate);
+    if (boLoc?.toDate) params.set('toDate', boLoc.toDate);
+    return guiYeuCau(`/stats/me${params.toString() ? `?${params}` : ''}`);
+  },
+  getMine: (boLoc) => {
+    if (typeof boLoc === 'string') return guiYeuCau(boLoc ? `/stats/me?period=${boLoc}` : '/stats/me');
+    const params = new URLSearchParams();
+    if (boLoc?.period) params.set('period', boLoc.period);
+    if (boLoc?.fromDate) params.set('fromDate', boLoc.fromDate);
+    if (boLoc?.toDate) params.set('toDate', boLoc.toDate);
+    return guiYeuCau(`/stats/me${params.toString() ? `?${params}` : ''}`);
+  },
 };
 
 export const thongBao = {

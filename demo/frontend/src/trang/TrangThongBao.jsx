@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { thongBao } from '../goiAPI';
+import { thongBao, users } from '../goiAPI';
 import { useAuth } from '../context/NguoiDungContext';
 
 export default function TrangThongBao() {
@@ -9,6 +9,10 @@ export default function TrangThongBao() {
   const [danhSach, setDanhSach] = useState([]);
   const [dangTai, setDangTai] = useState(true);
   const [loi, setLoi] = useState('');
+  const [hienModalTaiKhoan, setHienModalTaiKhoan] = useState(false);
+  const [dangTaiTaiKhoan, setDangTaiTaiKhoan] = useState(false);
+  const [loiTaiKhoan, setLoiTaiKhoan] = useState('');
+  const [thongTinTaiKhoan, setThongTinTaiKhoan] = useState(null);
 
   const taiLai = useCallback(() => {
     if (!user || !['CUSTOMER', 'STAFF', 'ADMIN'].includes(user.role)) return;
@@ -72,6 +76,32 @@ export default function TrangThongBao() {
     } catch (e) { /* ignore */ }
   };
 
+  const moThongTinTaiKhoan = async (thongBaoItem) => {
+    if (!thongBaoItem?.referenceId) return;
+    setHienModalTaiKhoan(true);
+    setDangTaiTaiKhoan(true);
+    setLoiTaiKhoan('');
+    setThongTinTaiKhoan(null);
+    await danhDauDoc(thongBaoItem.id);
+    try {
+      const data = await users.get(thongBaoItem.referenceId);
+      setThongTinTaiKhoan(data);
+    } catch (err) {
+      setLoiTaiKhoan(err?.message || 'Không tải được thông tin tài khoản.');
+    } finally {
+      setDangTaiTaiKhoan(false);
+    }
+  };
+
+  const dinhDangNgayGio = (value) => {
+    if (!value) return '-';
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return '-';
+    return d.toLocaleString('vi-VN');
+  };
+
+  const tenVaiTro = (role) => ({ CUSTOMER: 'Khách hàng', STAFF: 'Nhân viên', ADMIN: 'Quản trị viên' }[role] || role || '-');
+
   if (!coTheXemThongBao) {
     return (
       <div className="khung-form">
@@ -110,11 +140,13 @@ export default function TrangThongBao() {
               NEW_WASTE_TYPE: { to: '/tao-yeu-cau', label: 'Tạo yêu cầu thu gom' },
               NEW_REWARD: { to: '/doi-thuong', label: 'Xem phần thưởng' },
               NEW_COLLECTION_REQUEST: { to: `/yeu-cau/${t.referenceId}`, label: 'Xem và nhận yêu cầu' },
+              LOW_REWARD_STOCK: { to: '/quan-tri/phan-thuong', label: 'Xem phần thưởng' },
             };
-            const link = t.referenceId || t.type === 'NEW_WASTE_TYPE' || t.type === 'NEW_REWARD' || t.type === 'NEW_COLLECTION_REQUEST'
-              ? (linkConfig[t.type] || (t.referenceId ? { to: `/yeu-cau/${t.referenceId}`, label: 'Xem chi tiết' } : null))
+            const link = t.referenceId || t.type === 'NEW_WASTE_TYPE' || t.type === 'NEW_REWARD' || t.type === 'NEW_COLLECTION_REQUEST' || t.type === 'LOW_REWARD_STOCK'
+              ? (linkConfig[t.type] || null)
               : null;
-            const icon = { REQUEST_ACCEPTED: '✅', REQUEST_COMPLETED: '🎉', NEW_WASTE_TYPE: '🆕', NEW_REWARD: '🎁', NEW_COLLECTION_REQUEST: '📦' }[t.type] || '🔔';
+            const icon = { REQUEST_ACCEPTED: '✅', REQUEST_COMPLETED: '🎉', NEW_WASTE_TYPE: '🆕', NEW_REWARD: '🎁', NEW_COLLECTION_REQUEST: '📦', NEW_USER_REGISTERED: '👤', LOW_REWARD_STOCK: '⚠️' }[t.type] || '🔔';
+            const coTheXemThongTinTaiKhoan = t.type === 'NEW_USER_REGISTERED' && !!t.referenceId;
             return (
               <div
                 key={t.id}
@@ -139,10 +171,74 @@ export default function TrangThongBao() {
                       {link.label} →
                     </Link>
                   )}
+                  {coTheXemThongTinTaiKhoan && (
+                    <button
+                      type="button"
+                      className="lien-ket"
+                      style={{ marginLeft: '0.5rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        moThongTinTaiKhoan(t);
+                      }}
+                    >
+                      Xem thông tin tài khoản →
+                    </button>
+                  )}
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {hienModalTaiKhoan && (
+        <div className="modal-overlay">
+          <div className="modal" style={{ maxWidth: '40rem' }}>
+            <h2 className="modal__tieu-de">Thông tin tài khoản</h2>
+            {dangTaiTaiKhoan && <p className="van-ban-phu">Đang tải...</p>}
+            {!dangTaiTaiKhoan && loiTaiKhoan && <div className="thong-bao-loi">{loiTaiKhoan}</div>}
+            {!dangTaiTaiKhoan && !loiTaiKhoan && thongTinTaiKhoan && (
+              <div className="khung-chi-tiet" style={{ padding: '1rem' }}>
+                <div className="danh-sach-thong-tin">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0' }}>
+                    <span>Họ tên</span>
+                    <strong>{thongTinTaiKhoan.fullName || '-'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0' }}>
+                    <span>Email</span>
+                    <strong>{thongTinTaiKhoan.email || '-'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0' }}>
+                    <span>Số điện thoại</span>
+                    <strong>{thongTinTaiKhoan.phone || '-'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0' }}>
+                    <span>Địa chỉ</span>
+                    <strong>{thongTinTaiKhoan.address || '-'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0' }}>
+                    <span>Vai trò</span>
+                    <strong>{tenVaiTro(thongTinTaiKhoan.role)}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0' }}>
+                    <span>Trạng thái</span>
+                    <strong>{thongTinTaiKhoan.isLocked ? 'Khóa' : 'Hoạt động'}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0' }}>
+                    <span>Tạo tài khoản</span>
+                    <strong>{dinhDangNgayGio(thongTinTaiKhoan.createdAt)}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.2rem 0' }}>
+                    <span>Hoạt động gần nhất</span>
+                    <strong>{dinhDangNgayGio(thongTinTaiKhoan.lastActiveAt)}</strong>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div className="modal__nut">
+              <button type="button" className="nut-phu" onClick={() => setHienModalTaiKhoan(false)}>Đóng</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

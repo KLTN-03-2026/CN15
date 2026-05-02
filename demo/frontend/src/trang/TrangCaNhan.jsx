@@ -3,7 +3,7 @@ import { users } from '../goiAPI';
 
 export default function TrangCaNhan() {
   const [profile, setProfile] = useState(null);
-  const [sua, setSua] = useState({ fullName: '', phone: '', address: '' });
+  const [sua, setSua] = useState({ email: '', fullName: '', phone: '', address: '' });
   const [matKhau, setMatKhau] = useState({ current: '', new: '' });
   const [thongBaoMsg, setThongBaoMsg] = useState('');
 
@@ -12,7 +12,14 @@ export default function TrangCaNhan() {
   }, []);
 
   useEffect(() => {
-    if (profile) setSua({ fullName: profile.fullName || '', phone: profile.phone || '', address: profile.address || '' });
+    if (profile) {
+      setSua({
+        email: profile.email || '',
+        fullName: profile.fullName || '',
+        phone: profile.phone || '',
+        address: profile.address || '',
+      });
+    }
   }, [profile]);
 
   const luuThongTin = async (e) => {
@@ -53,7 +60,12 @@ export default function TrangCaNhan() {
         <form onSubmit={luuThongTin} className="form-gap" style={{ marginBottom: '2rem' }}>
           <div className="form-group">
             <label className="form-group__nhan">Email</label>
-            <input value={profile.email} className="form-group__input" disabled />
+            <input
+              value={sua.email}
+              onChange={(e) => setSua({ ...sua, email: e.target.value })}
+              className="form-group__input"
+              placeholder="Email"
+            />
           </div>
           <div className="form-group">
             <label className="form-group__nhan">Họ tên</label>

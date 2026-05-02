@@ -15,6 +15,40 @@ const storage = multer.diskStorage({
   },
 });
 const upload = multer({ storage });
+function parseLocalDateYMD(value) {
+  if (!value || typeof value !== 'string') return null;
+  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const month = Number(m[2]);
+  const day = Number(m[3]);
+  const d = new Date(y, month - 1, day);
+  if (Number.isNaN(d.getTime()) || d.getFullYear() !== y || d.getMonth() !== month - 1 || d.getDate() !== day) {
+    return null;
+  }
+  return d;
+}
+
+function dauNgay(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function cuoiNgay(d) {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x;
+}
+
+function tinhKhoangTheoChuKy(period) {
+  const now = new Date();
+  const end = cuoiNgay(now);
+  const start = dauNgay(now);
+  if (period === 'week') start.setDate(start.getDate() - 7);
+  else if (period === 'month') start.setMonth(start.getMonth() - 1);
+  return { start, end };
+}
 
 // Customer: Tạo yêu cầu thu gom
 router.post('/', authMiddleware, requireRole('CUSTOMER'), attachUser, upload.single('image'), async (req, res) => {
@@ -92,15 +126,36 @@ router.get('/my', authMiddleware, requireRole('CUSTOMER'), async (req, res) => {
   res.json(list);
 });
 
-// Staff: Danh sách tất cả yêu cầu (hỗ trợ lọc: status, date, address, wasteTypeId)
+// Staff: Danh sách tất cả yêu cầu (lọc theo ngày gửi yêu cầu của khách hàng)
 router.get('/', authMiddleware, requireRole('STAFF', 'ADMIN'), async (req, res) => {
-  const { status, date, address, wasteTypeId } = req.query;
+  const { status, date, period, fromDate, toDate, createdFrom, createdTo, address, wasteTypeId } = req.query;
   const where = status ? { status } : {};
-  if (date) {
-    const d = new Date(date);
-    const start = new Date(d.setHours(0, 0, 0, 0));
-    const end = new Date(d.setHours(23, 59, 59, 999));
-    where.desiredCollectionDate = { gte: start, lte: end };
+  // Ưu tiên khoảng ISO do trình duyệt gửi (đúng múi giờ người dùng)
+  if (createdFrom && createdTo) {
+    const start = new Date(String(createdFrom));
+    const end = new Date(String(createdTo));
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+      return res.status(400).json({ error: 'Khoảng thời gian không hợp lệ' });
+    }
+    if (start > end) return res.status(400).json({ error: 'Từ ngày phải nhỏ hơn hoặc bằng Đến ngày' });
+    where.createdAt = { gte: start, lte: end };
+  } else if (date) {
+    const d = parseLocalDateYMD(String(date));
+    if (!d) return res.status(400).json({ error: 'Ngày lọc không hợp lệ' });
+    const start = dauNgay(d);
+    const end = cuoiNgay(d);
+    where.createdAt = { gte: start, lte: end };
+  } else if (fromDate || toDate) {
+    const from = parseLocalDateYMD(String(fromDate || ''));
+    const to = parseLocalDateYMD(String(toDate || ''));
+    if (!from || !to) return res.status(400).json({ error: 'Khoảng ngày không hợp lệ' });
+    const start = dauNgay(from);
+    const end = cuoiNgay(to);
+    if (start > end) return res.status(400).json({ error: 'Từ ngày phải nhỏ hơn hoặc bằng Đến ngày' });
+    where.createdAt = { gte: start, lte: end };
+  } else if (period && ['day', 'week', 'month'].includes(String(period))) {
+    const { start, end } = tinhKhoangTheoChuKy(String(period));
+    where.createdAt = { gte: start, lte: end };
   }
   if (address?.trim()) {
     where.address = { contains: address.trim(), mode: 'insensitive' };

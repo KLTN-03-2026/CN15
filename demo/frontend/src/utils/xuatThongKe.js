@@ -43,6 +43,9 @@ function hangBang(cacGiaTri, inDam) {
 /** Xuất file Excel (.xlsx) từ dữ liệu thống kê API */
 export function xuatExcel(duLieu, nhanChuKy) {
   const wb = XLSX.utils.book_new();
+  const tongDiemDoiThuong = Array.isArray(duLieu.byRewardType)
+    ? duLieu.byRewardType.reduce((tong, b) => tong + (Number(b.totalPointsSpent) || 0), 0)
+    : 0;
 
   const tongHop = [
     ['Báo cáo thống kê — Hệ thống thu gom rác tái chế'],
@@ -54,6 +57,9 @@ export function xuatExcel(duLieu, nhanChuKy) {
     ['Tổng yêu cầu', duLieu.totalRequests],
     ['Đã hoàn thành', duLieu.completedRequests],
     ['Tổng khối lượng (kg)', duLieu.totalWeight ?? 0],
+    ['Tổng điểm nhận', duLieu.totalPointsEarned ?? 0],
+    ['Tổng điểm đã dùng', duLieu.totalPointsUsed ?? 0],
+    ['Tổng điểm đổi thưởng', tongDiemDoiThuong || (duLieu.totalPointsUsed ?? 0)],
   ];
   const ws1 = XLSX.utils.aoa_to_sheet(tongHop);
   XLSX.utils.book_append_sheet(wb, ws1, 'Tổng hợp');
@@ -75,6 +81,24 @@ export function xuatExcel(duLieu, nhanChuKy) {
     XLSX.utils.book_append_sheet(wb, ws3, 'Theo loại rác');
   }
 
+  const sheetPhanThuong = duLieu.byRewardType?.length
+    ? duLieu.byRewardType.map((b) => ({
+      'Loại báo cáo': 'Đổi thưởng theo loại (Phần thưởng đã đổi theo loại phần thưởng)',
+      'Loại phần thưởng': b.rewardName,
+      'Lượt đổi': b.redemptionCount,
+      'Khách hàng đổi': b.customerCount ?? 0,
+      'Tổng điểm đã dùng': b.totalPointsSpent,
+    }))
+    : [{
+      'Loại báo cáo': 'Đổi thưởng theo loại (Phần thưởng đã đổi theo loại phần thưởng)',
+      'Loại phần thưởng': 'Không có dữ liệu',
+      'Lượt đổi': 0,
+      'Khách hàng đổi': 0,
+      'Tổng điểm đã dùng': 0,
+    }];
+  const ws4 = XLSX.utils.json_to_sheet(sheetPhanThuong);
+  XLSX.utils.book_append_sheet(wb, ws4, 'Đổi thưởng theo loại');
+
   XLSX.writeFile(wb, `${tenFile('thong-ke')}.xlsx`);
 }
 
@@ -85,6 +109,8 @@ export async function xuatWord(duLieu, nhanChuKy) {
     hangBang(['Tổng yêu cầu', duLieu.totalRequests], false),
     hangBang(['Đã hoàn thành', duLieu.completedRequests], false),
     hangBang(['Tổng khối lượng (kg)', duLieu.totalWeight ?? 0], false),
+    hangBang(['Tổng điểm nhận', duLieu.totalPointsEarned ?? 0], false),
+    hangBang(['Tổng điểm đã dùng', duLieu.totalPointsUsed ?? 0], false),
   ];
 
   const ttRows = [
@@ -99,6 +125,13 @@ export async function xuatWord(duLieu, nhanChuKy) {
       ? [
           hangBang(['Loại rác', 'Số yêu cầu', 'Khối lượng (kg)'], true),
           ...duLieu.byWasteType.map((b) => hangBang([b.wasteType, b.count, b.totalWeight], false)),
+        ]
+      : [];
+  const phanThuongRows =
+    duLieu.byRewardType?.length > 0
+      ? [
+          hangBang(['Loại phần thưởng', 'Lượt đổi', 'Khách hàng đổi', 'Tổng điểm đã dùng'], true),
+          ...duLieu.byRewardType.map((b) => hangBang([b.rewardName, b.redemptionCount, b.customerCount ?? 0, b.totalPointsSpent], false)),
         ]
       : [];
 
@@ -142,6 +175,16 @@ export async function xuatWord(duLieu, nhanChuKy) {
                 new Table({
                   width: { size: 100, type: WidthType.PERCENTAGE },
                   rows: loaiRows,
+                }),
+              ]
+            : []),
+          ...(phanThuongRows.length
+            ? [
+                new Paragraph({ text: '' }),
+                new Paragraph({ children: [new TextRun({ text: 'Theo loại phần thưởng đã đổi', bold: true })] }),
+                new Table({
+                  width: { size: 100, type: WidthType.PERCENTAGE },
+                  rows: phanThuongRows,
                 }),
               ]
             : []),

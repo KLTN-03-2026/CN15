@@ -9,6 +9,7 @@
       "runtimeArgs": ["run", "dev"],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
+      "preLaunchTask": "Mở Chrome localhost:5173",
       "serverReadyAction": {
         "action": "openExternally",
         "pattern": "Local:\\s+(https?://[^\\s]+)",

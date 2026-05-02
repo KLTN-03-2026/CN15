@@ -5,6 +5,24 @@ import { authMiddleware, requireRole, attachUser } from '../middleware/trungGian
 
 const router = Router();
 const prisma = new PrismaClient();
+const NGUONG_CANH_BAO_TON_KHO = 10;
+
+async function guiCanhBaoTonKhoThapChoAdmin(reward, soLuongConLai) {
+  const admins = await prisma.user.findMany({
+    where: { role: 'ADMIN', isLocked: false },
+    select: { id: true },
+  });
+  if (admins.length === 0) return;
+  await prisma.notification.createMany({
+    data: admins.map((a) => ({
+      userId: a.id,
+      type: 'LOW_REWARD_STOCK',
+      title: 'Cảnh báo tồn kho phần thưởng thấp',
+      message: `Phần thưởng "${reward.name}" chỉ còn ${soLuongConLai} (dưới ${NGUONG_CANH_BAO_TON_KHO}).`,
+      referenceId: reward.id,
+    })),
+  });
+}
 
 function maNgauNhien(doDai = 8) {
   return crypto.randomBytes(doDai).toString('hex').slice(0, doDai).toUpperCase();
@@ -55,7 +73,7 @@ function chiTietNhanThuong(reward) {
       loai: 'voucher',
     };
   }
-  if (/voucher|phiếu|phiếu mua|mua sắm|giảm giá|shopping/i.test(chuoi)) {
+  if (/voucher|vocher|vourcher|phiếu|phiếu mua|mua sắm|giảm giá|shopping/i.test(chuoi)) {
     return {
       code: maVoucherNgauNhien(),
       note:
@@ -70,6 +88,15 @@ function chiTietNhanThuong(reward) {
   };
 }
 
+function tachLoaiRacTuMoTa(description) {
+  const text = String(description || '').trim();
+  if (!text) return null;
+  // Mẫu hiện có: "Thu gom 2kg - Nhựa"
+  const match = text.match(/-\s*(.+)$/);
+  if (match?.[1]) return match[1].trim();
+  return null;
+}
+
 // Customer: Xem điểm + lịch sử tích/sử dụng (phải đặt trước /:id)
 router.get('/points', authMiddleware, requireRole('CUSTOMER'), async (req, res) => {
   const user = await prisma.user.findUnique({
@@ -81,7 +108,60 @@ router.get('/points', authMiddleware, requireRole('CUSTOMER'), async (req, res) 
     orderBy: { createdAt: 'desc' },
     take: 50,
   });
-  res.json({ points: user.points, transactions });
+  const earnTransactions = transactions.filter((t) => t.type === 'earn' && t.referenceId);
+  const requestIds = [...new Set(earnTransactions.map((t) => t.referenceId).filter(Boolean))];
+
+  const requests = requestIds.length
+    ? await prisma.collectionRequest.findMany({
+        where: { id: { in: requestIds }, customerId: req.userId },
+        select: {
+          id: true,
+          wasteTypeId: true,
+          verifiedTypeId: true,
+        },
+      })
+    : [];
+
+  const wasteTypeIds = [
+    ...new Set(
+      requests.flatMap((r) => [r.verifiedTypeId, r.wasteTypeId]).filter(Boolean),
+    ),
+  ];
+  const wasteTypes = wasteTypeIds.length
+    ? await prisma.wasteType.findMany({
+        where: { id: { in: wasteTypeIds } },
+        select: { id: true, name: true },
+      })
+    : [];
+  const wasteTypeMap = Object.fromEntries(wasteTypes.map((w) => [w.id, w.name]));
+  const requestMap = Object.fromEntries(requests.map((r) => [r.id, r]));
+
+  const transactionsWithWasteType = transactions.map((t) => {
+    if (t.type !== 'earn') return t;
+    let wasteTypeName = null;
+    if (t.referenceId) {
+      const reqData = requestMap[t.referenceId];
+      if (reqData) {
+        wasteTypeName = wasteTypeMap[reqData.verifiedTypeId || reqData.wasteTypeId] || 'Khác';
+      }
+    }
+    if (!wasteTypeName) {
+      wasteTypeName = tachLoaiRacTuMoTa(t.description);
+    }
+    if (!wasteTypeName) return t;
+    return { ...t, wasteTypeName };
+  });
+
+  const tongTheoLoai = {};
+  transactionsWithWasteType.forEach((t) => {
+    if (t.type !== 'earn' || !t.wasteTypeName) return;
+    tongTheoLoai[t.wasteTypeName] = (tongTheoLoai[t.wasteTypeName] || 0) + (t.amount || 0);
+  });
+  const earnByWasteType = Object.entries(tongTheoLoai)
+    .map(([wasteTypeName, points]) => ({ wasteTypeName, points }))
+    .sort((a, b) => b.points - a.points);
+
+  res.json({ points: user.points, transactions: transactionsWithWasteType, earnByWasteType });
 });
 
 // Customer: Lịch sử đổi thưởng
@@ -114,6 +194,7 @@ router.post('/:id/redeem', authMiddleware, requireRole('CUSTOMER'), attachUser, 
     return res.status(400).json({ error: 'Điểm không đủ' });
   }
   if (reward.quantity < 1) return res.status(400).json({ error: 'Đã hết hàng' });
+  const soLuongConLaiSauDoi = reward.quantity - 1;
 
   const { code, note, loai } = chiTietNhanThuong(reward);
   const messageThanhCong =
@@ -140,6 +221,13 @@ router.post('/:id/redeem', authMiddleware, requireRole('CUSTOMER'), attachUser, 
       },
     }),
   ]);
+  if (reward.quantity >= NGUONG_CANH_BAO_TON_KHO && soLuongConLaiSauDoi < NGUONG_CANH_BAO_TON_KHO) {
+    try {
+      await guiCanhBaoTonKhoThapChoAdmin(reward, soLuongConLaiSauDoi);
+    } catch (err) {
+      console.error('[redeem] Không gửi được cảnh báo tồn kho thấp:', err?.message || err);
+    }
+  }
 
   const redemption = await prisma.rewardRedemption.create({
     data: {
@@ -228,11 +316,22 @@ router.post('/', authMiddleware, requireRole('ADMIN'), async (req, res) => {
       })),
     });
   }
+  if ((reward.quantity || 0) < NGUONG_CANH_BAO_TON_KHO) {
+    try {
+      await guiCanhBaoTonKhoThapChoAdmin(reward, reward.quantity || 0);
+    } catch (err) {
+      console.error('[reward.create] Không gửi được cảnh báo tồn kho thấp:', err?.message || err);
+    }
+  }
   res.json(reward);
 });
 
 router.put('/:id', authMiddleware, requireRole('ADMIN'), async (req, res) => {
   const { name, description, pointsCost, quantity, isActive } = req.body;
+  const truocKhiCapNhat = await prisma.reward.findUnique({
+    where: { id: req.params.id },
+    select: { id: true, name: true, quantity: true },
+  });
   const data = {};
   if (name !== undefined) data.name = name;
   if (description !== undefined) data.description = description;
@@ -243,6 +342,17 @@ router.put('/:id', authMiddleware, requireRole('ADMIN'), async (req, res) => {
     where: { id: req.params.id },
     data,
   });
+  if (
+    truocKhiCapNhat
+    && (truocKhiCapNhat.quantity ?? 0) >= NGUONG_CANH_BAO_TON_KHO
+    && (reward.quantity ?? 0) < NGUONG_CANH_BAO_TON_KHO
+  ) {
+    try {
+      await guiCanhBaoTonKhoThapChoAdmin(reward, reward.quantity ?? 0);
+    } catch (err) {
+      console.error('[reward.update] Không gửi được cảnh báo tồn kho thấp:', err?.message || err);
+    }
+  }
   res.json(reward);
 });
 

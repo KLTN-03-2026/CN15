@@ -20,7 +20,10 @@ export default function XuLyYeuCau() {
 
   return (
     <div>
-      <h1 className="tieu-de-trang">Danh sách yêu cầu thu gom</h1>
+      <h1 className="tieu-de-trang">Theo dõi yêu cầu và lịch sử xử lý</h1>
+      <p className="van-ban-phu" style={{ marginBottom: '1rem' }}>
+        Nhân viên có thể theo dõi toàn bộ yêu cầu của khách hàng theo từng trạng thái.
+      </p>
       <div className="bo-loc">
         <button
           onClick={() => setBoLoc('')}
@@ -28,7 +31,7 @@ export default function XuLyYeuCau() {
         >
           Tất cả
         </button>
-        {['PENDING', 'COLLECTING', 'COMPLETED'].map((s) => (
+        {['PENDING', 'COLLECTING', 'COMPLETED', 'CANCELLED'].map((s) => (
           <button
             key={s}
             onClick={() => setBoLoc(s)}
@@ -47,10 +50,11 @@ export default function XuLyYeuCau() {
               </h3>
               <p className="the__mo-ta">{r.address}</p>
               <p className="the__phu">Khách: {r.customer?.fullName}</p>
+              <p className="the__phu">Cập nhật gần nhất: {new Date(r.updatedAt).toLocaleString('vi-VN')}</p>
               <span className={layLopTrangThai(r.status)}>{TRANG_THAI[r.status]}</span>
             </div>
             <Link to={`/yeu-cau/${r.id}`} className="nut-chinh" style={{ fontSize: '0.875rem' }}>
-              Chi tiết
+              Xem chi tiết / lịch sử
             </Link>
           </div>
         ))}

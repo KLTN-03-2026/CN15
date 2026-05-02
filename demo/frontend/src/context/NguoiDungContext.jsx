@@ -27,10 +27,8 @@ export function NguoiDungProvider({ children }) {
   };
 
   const register = async (body) => {
-    const { user: u, token } = await authApi.register(body);
-    localStorage.setItem('token', token);
-    setUser(u);
-    return u;
+    const data = await authApi.register(body);
+    return data?.user || data;
   };
 
   const logout = () => {

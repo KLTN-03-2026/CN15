@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/NguoiDungContext';
 
 export default function DangNhap() {
@@ -8,6 +8,8 @@ export default function DangNhap() {
   const [loi, setLoi] = useState('');
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const thongBaoThanhCong = location.state?.thongBaoThanhCong || '';
 
   const xuLyGui = async (e) => {
     e.preventDefault();
@@ -35,6 +37,7 @@ export default function DangNhap() {
         <div className="khung-dang-nhap__icon">🔐</div>
         <h1 className="khung-dang-nhap__tieu-de">Đăng nhập</h1>
         <form onSubmit={xuLyGui} className="form-gap">
+          {thongBaoThanhCong && <div className="thong-bao-thanh-cong">{thongBaoThanhCong}</div>}
           {loi && <div className="thong-bao-loi">{loi}</div>}
           <div className="form-group">
             <label className="form-group__nhan">Email</label>

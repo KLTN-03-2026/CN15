@@ -4,11 +4,11 @@
     {
       "label": "Mở Chrome localhost:5173",
       "type": "shell",
-      "command": "start",
-      "args": ["chrome", "http://localhost:5173"],
+      "command": "cmd",
+      "args": ["/c", "start", "", "chrome", "http://localhost:5173"],
       "windows": {
-        "command": "start",
-        "args": ["chrome", "http://localhost:5173"]
+        "command": "cmd",
+        "args": ["/c", "start", "", "chrome", "http://localhost:5173"]
       },
       "problemMatcher": [],
       "presentation": { "reveal": "silent" }

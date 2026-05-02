@@ -73,6 +73,7 @@ function CacTuyen() {
         <Route path="doi-thuong" element={<DoiThuong />} />
 
         <Route path="nhan-vien/xu-ly" element={<TuyenRieng vaiTro={['STAFF', 'ADMIN']}><XuLyYeuCau /></TuyenRieng>} />
+        <Route path="nhan-vien/lich-su" element={<Navigate to="/nhan-vien/xu-ly" replace />} />
         <Route path="nhan-vien/nhan-yeu-cau" element={<TuyenRieng vaiTro={['STAFF', 'ADMIN']}><NhanYeuCau /></TuyenRieng>} />
         <Route path="nhan-vien/thu-gom-xac-minh" element={<TuyenRieng vaiTro={['STAFF', 'ADMIN']}><ThuGomXacMinh /></TuyenRieng>} />
         <Route path="nhan-vien/thong-ke" element={<TuyenRieng vaiTro={['STAFF', 'ADMIN']}><ThongKe /></TuyenRieng>} />

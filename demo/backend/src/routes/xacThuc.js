@@ -22,7 +22,7 @@ router.post('/register', async (req, res) => {
   if (p.length < 6) return res.status(400).json({ error: 'Mật khẩu tối thiểu 6 ký tự' });
 
   const exists = await prisma.user.findUnique({ where: { email: e } });
-  if (exists) return res.status(400).json({ error: 'Email đã tồn tại' });
+  if (exists) return res.status(400).json({ error: 'Gmail đã tồn tại, vui lòng nhập lại' });
 
   const hashed = await bcrypt.hash(p, 10);
   const user = await prisma.user.create({
@@ -36,6 +36,26 @@ router.post('/register', async (req, res) => {
     },
     select: { id: true, email: true, fullName: true, role: true },
   });
+  // Thông báo cho admin khi có tài khoản mới đăng ký
+  try {
+    const admins = await prisma.user.findMany({
+      where: { role: 'ADMIN', isLocked: false },
+      select: { id: true },
+    });
+    if (admins.length > 0) {
+      await prisma.notification.createMany({
+        data: admins.map((a) => ({
+          userId: a.id,
+          type: 'NEW_USER_REGISTERED',
+          title: 'Người dùng mới đăng ký',
+          message: `Người dùng "${user.fullName}" (${user.email}) vừa tạo tài khoản mới.`,
+          referenceId: user.id,
+        })),
+      });
+    }
+  } catch (err) {
+    console.error('[register] Không gửi được thông báo admin:', err?.message || err);
+  }
   const token = jwt.sign(
     { userId: user.id, role: user.role },
     process.env.JWT_SECRET || 'fallback-secret',

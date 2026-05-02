@@ -16,8 +16,6 @@ import phanThuong from './routes/phanThuong.js';
 import troLyAI from './routes/troLyAI.js';
 import thongKe from './routes/thongKe.js';
 import thongBao from './routes/thongBao.js';
-import { authMiddleware, requireRole } from './middleware/trungGianXacThuc.js';
-import { prisma } from './lib/prisma.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;

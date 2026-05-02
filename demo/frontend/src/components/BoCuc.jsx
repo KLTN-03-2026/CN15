@@ -52,6 +52,9 @@ export default function BoCuc() {
       : user?.role === 'STAFF'
         ? 'Nhân viên'
         : '';
+  const nhanVaiTroHienThi = user?.role === 'CUSTOMER' && user?.fullName
+    ? `${nhanVaiTro} - ${user.fullName}`
+    : nhanVaiTro;
 
   return (
     <div className={lopTheoVaiTro.boTrang} data-vai-tro={user?.role || 'guest'}>
@@ -60,16 +63,15 @@ export default function BoCuc() {
           <div className="thanh-nav__logo-hop">
             <Link to="/" className="thanh-nav__logo">♻️ Thu gom Rác Tái chế</Link>
             {nhanVaiTro && (
-              <span className="thanh-nav__bang-vai" title="Vai trò tài khoản">{nhanVaiTro}</span>
+              <span className="thanh-nav__bang-vai" title="Vai trò tài khoản">{nhanVaiTroHienThi}</span>
             )}
           </div>
           <div className="thanh-nav__menu">
             <Link to="/" className="thanh-nav__link">Trang chủ</Link>
-            <Link to="/huong-dan" className="thanh-nav__link">Hướng dẫn</Link>
+            {user?.role !== 'ADMIN' && <Link to="/huong-dan" className="thanh-nav__link">Hướng dẫn</Link>}
 
             {user ? (
               <>
-                <span className="thanh-nav__ten">{user.fullName}</span>
                 {user.role === 'CUSTOMER' && (
                   <>
                     <Link to="/tao-yeu-cau" className="thanh-nav__link">Tạo yêu cầu</Link>
@@ -90,8 +92,13 @@ export default function BoCuc() {
                 )}
                 {(user.role === 'STAFF' || user.role === 'ADMIN') && (
                   <>
-                    <Link to="/nhan-vien/nhan-yeu-cau" className="thanh-nav__link">Nhận yêu cầu</Link>
-                    <Link to="/nhan-vien/thu-gom-xac-minh" className="thanh-nav__link">Thu gom & Xác minh</Link>
+                    <Link to="/nhan-vien/xu-ly" className="thanh-nav__link">Theo dõi yêu cầu</Link>
+                    {user.role !== 'ADMIN' && (
+                      <>
+                        <Link to="/nhan-vien/nhan-yeu-cau" className="thanh-nav__link">Nhận yêu cầu</Link>
+                        <Link to="/nhan-vien/thu-gom-xac-minh" className="thanh-nav__link">Thu gom & Xác minh</Link>
+                      </>
+                    )}
                     <Link to="/thong-bao" className="thanh-nav__link" style={{ position: 'relative' }}>
                       Thông báo
                       {soThongBaoChuaDoc > 0 && (
