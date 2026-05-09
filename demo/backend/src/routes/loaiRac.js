@@ -18,8 +18,14 @@ router.get('/', async (req, res) => {
 // Admin: CRUD loại rác
 router.post('/', authMiddleware, requireRole('ADMIN'), async (req, res) => {
   const { name, description, pointsPerKg } = req.body;
+  const diemTrenKg = pointsPerKg === undefined || pointsPerKg === null || pointsPerKg === ''
+    ? 0
+    : Number(pointsPerKg);
+  if (Number.isNaN(diemTrenKg)) {
+    return res.status(400).json({ error: 'pointsPerKg phải là số hợp lệ' });
+  }
   const wt = await prisma.wasteType.create({
-    data: { name, description: description || null, pointsPerKg: pointsPerKg || 0 },
+    data: { name, description: description || null, pointsPerKg: diemTrenKg },
   });
   const customers = await prisma.user.findMany({ where: { role: 'CUSTOMER' }, select: { id: true } });
   if (customers.length > 0) {
@@ -28,7 +34,7 @@ router.post('/', authMiddleware, requireRole('ADMIN'), async (req, res) => {
         userId: c.id,
         type: 'NEW_WASTE_TYPE',
         title: 'Loại rác mới',
-        message: `Hệ thống vừa thêm loại rác "${name}" - ${pointsPerKg || 0} điểm/kg. Hãy tạo yêu cầu thu gom để tích điểm!`,
+        message: `Hệ thống vừa thêm loại rác "${name}" - ${diemTrenKg} điểm/kg. Hãy tạo yêu cầu thu gom để tích điểm!`,
         referenceId: wt.id,
       })),
     });
@@ -41,7 +47,13 @@ router.put('/:id', authMiddleware, requireRole('ADMIN'), async (req, res) => {
   const data = {};
   if (name !== undefined) data.name = name;
   if (description !== undefined) data.description = description;
-  if (pointsPerKg !== undefined) data.pointsPerKg = pointsPerKg;
+  if (pointsPerKg !== undefined) {
+    const diemTrenKg = Number(pointsPerKg);
+    if (Number.isNaN(diemTrenKg)) {
+      return res.status(400).json({ error: 'pointsPerKg phải là số hợp lệ' });
+    }
+    data.pointsPerKg = diemTrenKg;
+  }
   if (isActive !== undefined) data.isActive = isActive;
   const wt = await prisma.wasteType.update({
     where: { id: req.params.id },

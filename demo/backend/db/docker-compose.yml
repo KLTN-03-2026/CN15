@@ -1,5 +1,5 @@
 # PostgreSQL cho Hệ thống thu gom rác tái chế thông minh
-# Chạy: docker compose -f db/docker-compose.yml up -d
+# Chạy: docker compose -f backend/db/docker-compose.yml up -d (từ thư mục gốc repo)
 
 services:
   postgres:
@@ -9,7 +9,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: "123123"
-      POSTGRES_DB: smart_recycling
+      POSTGRES_DB: smart_recycling_vi
     ports:
       - "5432:5432"
     volumes:

@@ -26,6 +26,19 @@ export default function ChiTietYeuCau() {
       await collections.cancel(id);
       const moi = await collections.get(id);
       setYeuCau(moi);
+      window.dispatchEvent(new CustomEvent('notifications-updated'));
+    } catch (ex) {
+      alert(ex.message);
+    }
+  };
+
+  const huyBoiNhanVien = async () => {
+    if (!confirm('Hủy yêu cầu này? Khách hàng sẽ được thông báo.')) return;
+    try {
+      await collections.staffCancel(id);
+      const moi = await collections.get(id);
+      setYeuCau(moi);
+      window.dispatchEvent(new CustomEvent('notifications-updated'));
     } catch (ex) {
       alert(ex.message);
     }
@@ -77,6 +90,10 @@ export default function ChiTietYeuCau() {
   const laYeuCauCuaToi = yeuCau.staffId === user?.id;
   const coTheNhan = laNhanVien && yeuCau.status === 'PENDING';
   const coTheHoanThanh = laNhanVien && yeuCau.status === 'COLLECTING' && laYeuCauCuaToi;
+  const coTheHuyBoiNv =
+    laNhanVien &&
+    (yeuCau.status === 'PENDING' ||
+      (yeuCau.status === 'COLLECTING' && (user?.role === 'ADMIN' || laYeuCauCuaToi)));
 
   const duongQuayLai = user?.role === 'CUSTOMER'
     ? '/yeu-cau-cua-toi'
@@ -165,6 +182,9 @@ export default function ChiTietYeuCau() {
           )}
           {coTheNhan && (
             <button onClick={nhanYeuCau} className="nut-chinh">Nhận yêu cầu</button>
+          )}
+          {coTheHuyBoiNv && (
+            <button type="button" onClick={huyBoiNhanVien} className="nut-nguy-hiem">Hủy yêu cầu (nhân viên)</button>
           )}
         </div>
 

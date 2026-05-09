@@ -19,7 +19,7 @@ function noiDungTheoVaiTro(user) {
         'Sau khi hoàn thành thu gom, điểm tích lũy được ghi nhận cho khách hàng và dùng trong chương trình đổi thưởng; dữ liệu được quản lý thống nhất.',
       ],
       gioiThieuKet:
-        'Bạn có thể xem hướng dẫn phân loại và danh mục đổi thưởng công khai. Đăng ký hoặc đăng nhập tài khoản khách hàng để tạo yêu cầu thu gom và theo dõi trạng thái.',
+        'Bạn có thể xem hướng dẫn phân loại công khai. Đăng ký hoặc đăng nhập tài khoản khách hàng để tạo yêu cầu thu gom và theo dõi trạng thái.',
     };
   }
   if (user.role === 'CUSTOMER') {
@@ -77,6 +77,8 @@ function noiDungTheoVaiTro(user) {
 export default function TrangChu() {
   const { user } = useAuth();
   const nd = noiDungTheoVaiTro(user);
+  /** Cùng giao diện trang chủ công khai (hero + media) cho khách chưa đăng nhập và khách hàng đã đăng nhập */
+  const hienTrangChuChinh = !user || user.role === 'CUSTOMER';
   const [moHoTro, setMoHoTro] = useState(false);
   const hinhAnhThucTe = [
     '/uploads/gd1.jpg',
@@ -84,12 +86,11 @@ export default function TrangChu() {
     '/uploads/gd3.jpg',
   ];
   const hinhAnhHeroKhach = '/uploads/giaodien.png';
-  const hinhAnhTrangChuKhachHang = '/uploads/giaodien2.jpg';
 
   return (
     <div className="trang-chu">
-      {!user && (
-        <section className="guest-home" aria-label="Trang chủ khách vãng lai">
+      {hienTrangChuChinh && (
+        <section className="guest-home" aria-label="Trang chủ">
           <div className="guest-home__hero">
             <div className="guest-home__hero-noi-dung">
               <span className="guest-home__badge">Vì một môi trường xanh - sạch - đẹp</span>
@@ -113,14 +114,19 @@ export default function TrangChu() {
           </div>
 
           <div className="guest-home__tinh-nang">
-            <Link to="/dang-nhap" className="guest-home__the">
+            <Link
+              to={user?.role === 'CUSTOMER' ? '/tao-yeu-cau' : '/dang-nhap'}
+              className="guest-home__the"
+            >
               <h3>Đặt lịch thu gom</h3>
               <p>Gửi yêu cầu thu gom nhanh chóng, tiện lợi theo thời gian phù hợp.</p>
             </Link>
-            <Link to="/doi-thuong" className="guest-home__the">
-              <h3>Đổi thưởng</h3>
-              <p>Tích điểm xanh và đổi những phần quà hữu ích.</p>
-            </Link>
+            {user?.role === 'CUSTOMER' && (
+              <Link to="/doi-thuong" className="guest-home__the">
+                <h3>Đổi thưởng</h3>
+                <p>Tích điểm xanh và đổi những phần quà hữu ích.</p>
+              </Link>
+            )}
           </div>
 
           <div className="guest-home__quy-trinh">
@@ -136,34 +142,7 @@ export default function TrangChu() {
         </section>
       )}
 
-      {user?.role === 'CUSTOMER' ? (
-        <section className="khach-hang-hero" aria-label="Tổng quan nhanh khách hàng">
-          <div className="khach-hang-hero__noi-dung">
-            <p className="khach-hang-hero__chao">Chào mừng bạn đến với hệ thống!</p>
-            <h2 className="khach-hang-hero__tieu-de">Hệ thống hỗ trợ tạo yêu cầu thu gom, theo dõi xử lý và tích điểm đổi thưởng.</h2>
-            <div className="khach-hang-hero__so-lieu">
-              <div className="khach-hang-hero__chip">
-                <span>Điểm hiện có</span>
-                <strong>{Number(user?.points || 0).toLocaleString('vi-VN')} điểm</strong>
-              </div>
-              <div className="khach-hang-hero__chip">
-                <span>Theo dõi trạng thái</span>
-                <strong>Chờ xử lý / Đang thu gom / Hoàn thành</strong>
-              </div>
-            </div>
-          </div>
-          <div className="khach-hang-hero__anh-wrap">
-            <div className="trang-chu-guest-media__luoi">
-              <img
-                src={encodeURI(hinhAnhTrangChuKhachHang)}
-                alt="Đặt lịch thu gom rác thải"
-                className="khach-hang-hero__anh"
-                loading="lazy"
-              />
-            </div>
-          </div>
-        </section>
-      ) : user ? (
+      {user && user.role !== 'CUSTOMER' ? (
       <section className="banner" aria-labelledby="trang-chu-tieu-de">
         <div className="banner__noi-dung">
           <span className="banner__icon" aria-hidden="true">
@@ -199,7 +178,7 @@ export default function TrangChu() {
       </section>
       ) : null}
 
-      {!user && (
+      {hienTrangChuChinh && (
         <section className="trang-chu-guest-media" aria-label="Hình ảnh thực tế thu gom tái chế">
           <div className="trang-chu-guest-media__noi-dung">
             <div>
@@ -219,32 +198,6 @@ export default function TrangChu() {
                   loading="lazy"
                 />
               ))}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {user?.role === 'CUSTOMER' && (
-        <section className="trang-chu-khach-hang" aria-label="Bắt đầu nhanh cho khách hàng">
-          <div className="trang-chu-khach-hang__the">
-            <span className="trang-chu-khach-hang__so">1</span>
-            <div>
-              <h3 className="trang-chu-khach-hang__tieu-de">Tạo yêu cầu thu gom</h3>
-              <p className="trang-chu-khach-hang__mo-ta">Nhập địa chỉ, loại rác và ảnh minh họa để hệ thống hỗ trợ phân loại.</p>
-            </div>
-          </div>
-          <div className="trang-chu-khach-hang__the">
-            <span className="trang-chu-khach-hang__so">2</span>
-            <div>
-              <h3 className="trang-chu-khach-hang__tieu-de">Theo dõi trạng thái</h3>
-              <p className="trang-chu-khach-hang__mo-ta">Xem tiến trình chờ xử lý, đang thu gom và hoàn thành theo thời gian thực.</p>
-            </div>
-          </div>
-          <div className="trang-chu-khach-hang__the">
-            <span className="trang-chu-khach-hang__so">3</span>
-            <div>
-              <h3 className="trang-chu-khach-hang__tieu-de">Nhận điểm và đổi thưởng</h3>
-              <p className="trang-chu-khach-hang__mo-ta">Điểm tích lũy sau xác minh có thể đổi quà trong mục phần thưởng.</p>
             </div>
           </div>
         </section>

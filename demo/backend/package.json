@@ -3,10 +3,11 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "node src/chinh.js",
+    "dev": "node --watch src/chinh.js",
     "start": "node src/chinh.js",
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
+    "prisma:push:tieng-viet": "prisma db push --accept-data-loss && prisma generate && node prisma/ganDuLieu.js",
     "prisma:seed": "node prisma/ganDuLieu.js"
   },
   "dependencies": {

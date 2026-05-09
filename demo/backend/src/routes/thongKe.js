@@ -130,11 +130,11 @@ async function layBaoCaoThongKe(period, customerId) {
         ...(customerId ? { userId: customerId } : {}),
         createdAt: { gte: startDate, lte: endDate },
       },
-      select: {
-        rewardId: true,
-        userId: true,
-        pointsSpent: true,
+      include: {
+        reward: { select: { id: true, name: true, pointsCost: true } },
+        user: { select: { id: true, email: true, fullName: true } },
       },
+      orderBy: { createdAt: 'desc' },
     }),
   ]);
 
@@ -155,20 +155,12 @@ async function layBaoCaoThongKe(period, customerId) {
     _sum: { verifiedWeight: true },
   }))._sum.verifiedWeight ?? 0;
   const totalPointsEarned = earnedAgg._sum.amount ?? 0;
-  const rewardIds = [...new Set(byRewardRedemption.map((r) => r.rewardId).filter(Boolean))];
-  const rewards = rewardIds.length > 0
-    ? await prisma.reward.findMany({
-      where: { id: { in: rewardIds } },
-      select: { id: true, name: true },
-    })
-    : [];
-  const rewardMap = Object.fromEntries(rewards.map((r) => [r.id, r.name]));
   const aggByReward = new Map();
   byRewardRedemption.forEach((item) => {
     const key = item.rewardId || 'unknown';
     const hienTai = aggByReward.get(key) || {
       rewardId: item.rewardId,
-      rewardName: rewardMap[item.rewardId] || 'Phần thưởng khác',
+      rewardName: item.reward?.name || 'Phần thưởng khác',
       redemptionCount: 0,
       totalPointsSpent: 0,
       customerIds: new Set(),
@@ -192,9 +184,27 @@ async function layBaoCaoThongKe(period, customerId) {
     0,
   );
 
+  /** Mỗi dòng = một lượt đổi thưởng (xuất Excel chi tiết). */
+  const rewardRedemptionDetails = byRewardRedemption.map((r) => ({
+    id: r.id,
+    createdAt: r.createdAt,
+    customerEmail: r.user?.email ?? '',
+    customerName: r.user?.fullName ?? '',
+    rewardName: r.reward?.name ?? '',
+    rewardPointsCost: r.reward?.pointsCost ?? null,
+    pointsSpent: Math.abs(Number(r.pointsSpent) || 0),
+    status: r.status,
+    confirmationCode: r.confirmationCode ?? '',
+    fulfillmentNote: r.fulfillmentNote ?? '',
+  }));
+
+  const periodKey = period.period || 'month';
+  /** Không trả epoch (1970) cho chu kỳ "Tất cả" — client hiển thị "toàn bộ" thay vì 1/1/1970. */
+  const startDateTraVe = periodKey === 'all' ? null : startDate;
+
   return {
-    period: period.period || 'month',
-    startDate,
+    period: periodKey,
+    startDate: startDateTraVe,
     endDate,
     totalRequests,
     completedRequests,
@@ -204,6 +214,7 @@ async function layBaoCaoThongKe(period, customerId) {
     byStatus: Object.fromEntries(byStatus.map((s) => [s.status, s._count])),
     byWasteType: byWasteTypeDetail,
     byRewardType,
+    rewardRedemptionDetails,
   };
 }
 

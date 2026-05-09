@@ -1,9 +1,9 @@
 -- =============================================================================
 -- Hệ thống thu gom rác tái chế — PostgreSQL
--- Khớp: db/schema_dbdiagram.dbml (10 bảng)
+-- Khớp: backend/db/schema_dbdiagram.dbml (10 bảng)
 -- Chạy: psql -U postgres -f schema.sql
--- Hoặc tạo DB trước: CREATE DATABASE smart_recycling ENCODING 'UTF8';
---       \c smart_recycling
+-- Hoặc tạo DB trước: CREATE DATABASE smart_recycling_vi ENCODING 'UTF8';
+--       \c smart_recycling_vi
 --       rồi chạy nội dung file này.
 -- =============================================================================
 
@@ -109,14 +109,16 @@ CREATE TABLE phan_thuongs (
   ngay_cap_nhat    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Bảng 8: Lịch sử đổi thưởng
+-- Bảng 8: Lịch sử đổi thưởng (cột ma_xac_nhan, ghi_chu_thuc_hien khớp Prisma)
 CREATE TABLE lich_su_doi_thuongs (
-  id               VARCHAR(64) PRIMARY KEY,
-  id_nguoi_dung    VARCHAR(64) NOT NULL REFERENCES nguoi_dungs (id) ON DELETE CASCADE,
-  id_phan_thuong   VARCHAR(64) NOT NULL REFERENCES phan_thuongs (id_phan_thuong) ON DELETE RESTRICT,
-  diem_su_dung     INTEGER NOT NULL,
-  trang_thai       VARCHAR(32) NOT NULL DEFAULT 'completed',
-  ngay_tao         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id                 VARCHAR(64) PRIMARY KEY,
+  id_nguoi_dung      VARCHAR(64) NOT NULL REFERENCES nguoi_dungs (id) ON DELETE CASCADE,
+  id_phan_thuong     VARCHAR(64) NOT NULL REFERENCES phan_thuongs (id_phan_thuong) ON DELETE RESTRICT,
+  diem_su_dung       INTEGER NOT NULL,
+  trang_thai         VARCHAR(32) NOT NULL DEFAULT 'completed',
+  ma_xac_nhan        VARCHAR(255) NOT NULL DEFAULT '',
+  ghi_chu_thuc_hien  TEXT,
+  ngay_tao           TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_lsdt_nd ON lich_su_doi_thuongs (id_nguoi_dung);

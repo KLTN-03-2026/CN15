@@ -121,9 +121,9 @@ export default function BoCuc() {
               </>
             ) : (
               <>
-                <Link to="/doi-thuong" className="thanh-nav__link">Đổi thưởng</Link>
                 <Link to="/dang-nhap" className="thanh-nav__nut">Đăng nhập</Link>
                 <Link to="/dang-ky" className="thanh-nav__nut">Đăng ký</Link>
+                
               </>
             )}
           </div>

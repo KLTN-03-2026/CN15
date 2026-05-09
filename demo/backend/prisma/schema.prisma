@@ -1,4 +1,5 @@
-// Prisma schema - Hệ thống thu gom rác tái chế thông minh
+// Prisma schema — map sang tên bảng/cột tiếng Việt trong PostgreSQL (schema public)
+// Khớp: backend/db/schema.sql
 
 generator client {
   provider = "prisma-client-js"
@@ -9,157 +10,185 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  fullName  String
-  phone     String?
-  address   String?
-  avatar    String?
-  role      String   @default("CUSTOMER")  // CUSTOMER | STAFF | ADMIN
-  isLocked  Boolean  @default(false)
-  points    Int      @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model Admin {
+  id        String   @id @default(cuid()) @map("id")
+  email     String   @unique @map("email")
+  password  String   @map("mat_khau")
+  fullName  String   @map("ho_ten")
+  createdAt DateTime @default(now()) @map("ngay_tao")
+  updatedAt DateTime @updatedAt @map("ngay_cap_nhat")
 
-  // Quan hệ
-  collectionRequests  CollectionRequest[]
+  lockedUsers User[] @relation("AdminLockedUsers")
+
+  @@map("admins")
+}
+
+model User {
+  id            String   @id @default(cuid()) @map("id")
+  email         String   @unique @map("email")
+  password      String   @map("mat_khau")
+  fullName      String   @map("ho_ten")
+  phone         String?  @map("so_dien_thoai")
+  address       String?  @map("dia_chi")
+  avatar        String?  @map("avatar")
+  role          String   @default("CUSTOMER") @map("vai_tro")
+  isLocked      Boolean  @default(false) @map("bi_khoa")
+  points        Int      @default(0) @map("diem")
+  idAdminKhoa   String?  @map("id_admin_khoa")
+  createdAt     DateTime @default(now()) @map("ngay_tao")
+  updatedAt     DateTime @updatedAt @map("ngay_cap_nhat")
+
+  lockedByAdmin Admin?   @relation("AdminLockedUsers", fields: [idAdminKhoa], references: [id], onDelete: SetNull)
+
+  collectionRequests  CollectionRequest[] @relation("CustomerRequests")
   staffRequests       CollectionRequest[] @relation("StaffRequests")
-  pointTransactions  PointTransaction[]
+  pointTransactions   PointTransaction[]
   rewardRedemptions   RewardRedemption[]
   passwordResets      PasswordReset[]
   notifications       Notification[]
+
+  @@index([role], map: "idx_nguoi_dungs_vai_tro")
+  @@index([isLocked], map: "idx_nguoi_dungs_bi_khoa")
+  @@map("nguoi_dungs")
 }
 
-// Thông báo cho khách hàng
 model Notification {
-  id          String   @id @default(cuid())
-  userId      String
-  type        String   // REQUEST_ACCEPTED | REQUEST_COMPLETED
-  title       String
-  message     String
-  referenceId String?  // ID yêu cầu thu gom
-  isRead      Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id          String   @id @default(cuid()) @map("id")
+  userId      String   @map("id_nguoi_dung")
+  type        String   @map("loai")
+  title       String   @map("tieu_de")
+  message     String   @map("noi_dung")
+  referenceId String?  @map("id_tham_chieu")
+  isRead      Boolean  @default(false) @map("da_doc")
+  createdAt   DateTime @default(now()) @map("ngay_tao")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([userId, isRead])
+  @@map("thong_baos")
 }
 
-// Token đặt lại mật khẩu
 model PasswordReset {
-  id        String   @id @default(cuid())
-  userId   String
-  token    String   @unique
-  expiresAt DateTime
-  createdAt DateTime @default(now())
+  id        String   @id @default(cuid()) @map("id")
+  userId    String   @map("id_nguoi_dung")
+  token     String   @unique @map("token")
+  expiresAt DateTime @map("het_han")
+  createdAt DateTime @default(now()) @map("ngay_tao")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([token])
   @@index([userId])
+  @@map("password_resets")
 }
 
-// Loại rác
 model WasteType {
-  id          String   @id @default(cuid())
-  name        String   // Tên loại rác (nhựa, giấy, kim loại...)
-  description String?
-  pointsPerKg Float    @default(0)  // Điểm/1kg
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id          String   @id @default(cuid()) @map("id_loai_rac")
+  name        String   @map("ten_loai")
+  description String?  @map("mo_ta")
+  pointsPerKg Float    @default(0) @map("diem_tren_kg")
+  isActive    Boolean  @default(true) @map("hoat_dong")
+  createdAt   DateTime @default(now()) @map("ngay_tao")
+  updatedAt   DateTime @updatedAt @map("ngay_cap_nhat")
 
-  collectionRequests CollectionRequest[]
+  collectionRequests       CollectionRequest[] @relation("RequestWasteType")
+  verifiedInRequests       CollectionRequest[] @relation("RequestVerifiedType")
+
+  @@map("loai_racs")
 }
 
-// Yêu cầu thu gom
 model CollectionRequest {
-  id                    String    @id @default(cuid())
-  customerId            String
-  wasteTypeId           String
-  quantity              Float     // Số lượng (kg)
-  estimatedQuantity     Float?    // Ước tính ban đầu
-  address               String
-  phone                 String?   // Số điện thoại liên hệ thu gom
-  desiredCollectionDate DateTime? // Ngày muốn tới thu gom
-  note                  String?
-  imageUrl              String?   // Ảnh rác (AI nhận diện)
-  status          String       @default("PENDING")  // PENDING | COLLECTING | COMPLETED | CANCELLED
-  staffId         String?      // Nhân viên nhận xử lý
-  verifiedWeight  Float?       // Khối lượng thực tế xác minh
-  verifiedTypeId  String?      // Loại rác xác minh
-  pointsEarned    Int?         // Điểm tích lũy (khi hoàn thành)
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-  completedAt     DateTime?
+  id                    String    @id @default(cuid()) @map("id_yeu_cau")
+  customerId            String    @map("id_khach_hang")
+  wasteTypeId           String    @map("id_loai_rac")
+  quantity              Float     @map("so_luong")
+  estimatedQuantity     Float?    @map("so_luong_uoc_tinh")
+  address               String    @map("dia_chi")
+  phone                 String?   @map("so_dien_thoai")
+  desiredCollectionDate DateTime? @map("ngay_muon_thu_gom")
+  note                  String?   @map("ghi_chu")
+  imageUrl              String?   @map("url_anh")
+  status                String    @default("PENDING") @map("trang_thai")
+  staffId               String?   @map("id_nhan_vien")
+  verifiedWeight        Float?    @map("khoi_luong_xac_minh")
+  verifiedTypeId        String?   @map("id_loai_rac_xac_minh")
+  pointsEarned          Int?      @map("diem_tich_luy")
+  createdAt             DateTime  @default(now()) @map("ngay_tao")
+  updatedAt             DateTime  @updatedAt @map("ngay_cap_nhat")
+  completedAt           DateTime? @map("ngay_hoan_thanh")
 
-  customer  User      @relation(fields: [customerId], references: [id], onDelete: Cascade)
-  wasteType WasteType @relation(fields: [wasteTypeId], references: [id])
+  customer  User      @relation("CustomerRequests", fields: [customerId], references: [id], onDelete: Restrict)
+  wasteType WasteType @relation("RequestWasteType", fields: [wasteTypeId], references: [id])
   staff     User?     @relation("StaffRequests", fields: [staffId], references: [id])
+  verifiedWasteType WasteType? @relation("RequestVerifiedType", fields: [verifiedTypeId], references: [id])
 
   statusHistory StatusHistory[]
+
+  @@index([customerId], map: "idx_yc_id_kh")
+  @@index([staffId], map: "idx_yc_id_nv")
+  @@index([status], map: "idx_yc_trang_thai")
+  @@map("yeu_cau_thu_goms")
 }
 
-// Lịch sử trạng thái
 model StatusHistory {
-  id         String        @id @default(cuid())
-  requestId  String
-  status     String
-  note       String?
-  createdAt  DateTime      @default(now())
+  id        String   @id @default(cuid()) @map("id")
+  requestId String   @map("id_yeu_cau")
+  status    String   @map("trang_thai")
+  note      String?  @map("ghi_chu")
+  createdAt DateTime @default(now()) @map("ngay_tao")
 
   request CollectionRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
 
-  @@index([requestId])
+  @@index([requestId], map: "idx_lst_id_yc")
+  @@map("lich_su_trang_thais")
 }
 
-// Phần thưởng đổi điểm
 model Reward {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  pointsCost  Int      // Điểm cần đổi
-  quantity    Int      @default(0)  // Số lượng còn
-  imageUrl    String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id          String   @id @default(cuid()) @map("id_phan_thuong")
+  name        String   @map("ten_phan_thuong")
+  description String?  @map("mo_ta")
+  pointsCost  Int      @map("diem_doi")
+  quantity    Int      @default(0) @map("so_luong_con")
+  imageUrl    String?  @map("url_anh")
+  isActive    Boolean  @default(true) @map("hoat_dong")
+  createdAt   DateTime @default(now()) @map("ngay_tao")
+  updatedAt   DateTime @updatedAt @map("ngay_cap_nhat")
 
   redemptions RewardRedemption[]
+
+  @@map("phan_thuongs")
 }
 
-// Lịch sử đổi thưởng
 model RewardRedemption {
-  id               String   @id @default(cuid())
-  userId           String
-  rewardId         String
-  pointsSpent      Int
-  status           String   @default("completed")  // completed, cancelled
-  confirmationCode String   @default("")
-  fulfillmentNote  String?
-  createdAt        DateTime @default(now())
+  id               String   @id @default(cuid()) @map("id")
+  userId           String   @map("id_nguoi_dung")
+  rewardId         String   @map("id_phan_thuong")
+  pointsSpent      Int      @map("diem_su_dung")
+  status           String   @default("completed") @map("trang_thai")
+  confirmationCode String   @default("") @map("ma_xac_nhan")
+  fulfillmentNote  String?  @map("ghi_chu_thuc_hien")
+  createdAt        DateTime @default(now()) @map("ngay_tao")
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reward Reward @relation(fields: [rewardId], references: [id])
+  reward Reward @relation(fields: [rewardId], references: [id], onDelete: Restrict)
 
-  @@index([userId])
+  @@index([userId], map: "idx_lsdt_nd")
+  @@map("lich_su_doi_thuongs")
 }
 
-// Giao dịch điểm (tích điểm + sử dụng)
 model PointTransaction {
-  id          String   @id @default(cuid())
-  userId      String
-  amount      Int      // Dương: cộng điểm, Âm: trừ điểm
-  type        String   // "earn" | "redeem" | "admin_adjust"
-  description String?
-  referenceId String?  // ID yêu cầu hoặc đổi thưởng
-  createdAt   DateTime @default(now())
+  id          String   @id @default(cuid()) @map("id")
+  userId      String   @map("id_nguoi_dung")
+  amount      Int      @map("so_diem")
+  type        String   @map("loai")
+  description String?  @map("mo_ta")
+  referenceId String?  @map("id_tham_chieu")
+  createdAt   DateTime @default(now()) @map("ngay_tao")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@index([userId], map: "idx_gdd_nd")
+  @@index([type], map: "idx_gdd_loai")
+  @@map("giao_dich_diems")
 }

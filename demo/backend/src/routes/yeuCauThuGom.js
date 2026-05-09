@@ -126,6 +126,49 @@ router.get('/my', authMiddleware, requireRole('CUSTOMER'), async (req, res) => {
   res.json(list);
 });
 
+// Staff/Admin: Hủy yêu cầu — đặt TRƯỚC GET /:id để tránh xung đột / nhầm tuyến (một số môi trường proxy)
+// PENDING: mọi STAFF/ADMIN; COLLECTING: chỉ nhân viên được giao hoặc ADMIN
+router.put('/staff-cancel/:id', authMiddleware, requireRole('STAFF', 'ADMIN'), async (req, res) => {
+  const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : '';
+  const r = await prisma.collectionRequest.findUnique({
+    where: { id: req.params.id },
+    include: { wasteType: true },
+  });
+  if (!r) return res.status(404).json({ error: 'Không tìm thấy' });
+  if (r.status !== 'PENDING' && r.status !== 'COLLECTING') {
+    return res.status(400).json({ error: 'Chỉ hủy được khi đang chờ xử lý hoặc đang thu gom' });
+  }
+  if (r.status === 'COLLECTING') {
+    if (req.userRole !== 'ADMIN' && r.staffId !== req.userId) {
+      return res.status(403).json({ error: 'Chỉ nhân viên phụ trách hoặc quản trị viên mới hủy được yêu cầu này' });
+    }
+  }
+  await prisma.collectionRequest.update({
+    where: { id: req.params.id },
+    data: { status: 'CANCELLED', staffId: null },
+  });
+  const note = reason ? `Nhân viên/quản trị hủy: ${reason}` : 'Nhân viên/quản trị hủy yêu cầu';
+  await prisma.statusHistory.create({
+    data: { requestId: req.params.id, status: 'CANCELLED', note },
+  });
+  try {
+    await prisma.notification.create({
+      data: {
+        userId: r.customerId,
+        type: 'REQUEST_CANCELLED_BY_STAFF',
+        title: 'Yêu cầu thu gom đã bị hủy',
+        message: reason
+          ? `Yêu cầu thu gom ${r.wasteType?.name || 'rác'} - ${r.quantity}kg tại ${r.address} đã bị hủy. Lý do: ${reason}`
+          : `Yêu cầu thu gom ${r.wasteType?.name || 'rác'} - ${r.quantity}kg tại ${r.address} đã bị nhân viên/quản trị hủy.`,
+        referenceId: req.params.id,
+      },
+    });
+  } catch (err) {
+    console.error('[Notification] Lỗi khi tạo thông báo hủy (nhân viên):', err.message);
+  }
+  res.json({ message: 'Đã hủy yêu cầu' });
+});
+
 // Staff: Danh sách tất cả yêu cầu (lọc theo ngày gửi yêu cầu của khách hàng)
 router.get('/', authMiddleware, requireRole('STAFF', 'ADMIN'), async (req, res) => {
   const { status, date, period, fromDate, toDate, createdFrom, createdTo, address, wasteTypeId } = req.query;

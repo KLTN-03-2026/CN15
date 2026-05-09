@@ -1,16 +1,50 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { collections } from '../goiAPI';
+import { useAuth } from '../context/NguoiDungContext';
 
 const TRANG_THAI = { PENDING: 'Chờ xử lý', COLLECTING: 'Đang thu gom', COMPLETED: 'Hoàn thành', CANCELLED: 'Đã hủy' };
 
+function coTheHuyBangNhanVien(user, r) {
+  if (!user || (user.role !== 'STAFF' && user.role !== 'ADMIN')) return false;
+  if (r.status === 'PENDING') return true;
+  if (r.status === 'COLLECTING') {
+    return user.role === 'ADMIN' || r.staffId === user.id;
+  }
+  return false;
+}
+
 export default function XuLyYeuCau() {
+  const { user } = useAuth();
   const [danhSach, setDanhSach] = useState([]);
   const [boLoc, setBoLoc] = useState('');
+  const [dangHuyId, setDangHuyId] = useState(null);
+
+  const taiLaiDanhSach = useCallback(() => {
+    collections.list(boLoc || undefined).then(setDanhSach).catch(() => setDanhSach([]));
+  }, [boLoc]);
 
   useEffect(() => {
-    collections.list(boLoc || undefined).then(setDanhSach);
-  }, [boLoc]);
+    taiLaiDanhSach();
+  }, [taiLaiDanhSach]);
+
+  const huyYeuCau = async (r) => {
+    if (
+      !confirm(
+        'Hủy yêu cầu này? Khách hàng sẽ được thông báo. Không thể hoàn tác.'
+      )
+    ) return;
+    setDangHuyId(r.id);
+    try {
+      await collections.staffCancel(r.id);
+      taiLaiDanhSach();
+      window.dispatchEvent(new CustomEvent('notifications-updated'));
+    } catch (ex) {
+      alert(ex.message);
+    } finally {
+      setDangHuyId(null);
+    }
+  };
 
   const layLopTrangThai = (status) => {
     if (status === 'COMPLETED') return 'nhan-trang-thai nhan-trang-thai--hoan-thanh';
@@ -22,7 +56,7 @@ export default function XuLyYeuCau() {
     <div>
       <h1 className="tieu-de-trang">Theo dõi yêu cầu và lịch sử xử lý</h1>
       <p className="van-ban-phu" style={{ marginBottom: '1rem' }}>
-        Nhân viên có thể theo dõi toàn bộ yêu cầu của khách hàng theo từng trạng thái.
+        Nhân viên có thể theo dõi toàn bộ yêu cầu của khách hàng theo từng trạng thái. Với yêu cầu <strong>chờ xử lý</strong> hoặc <strong>đang thu gom</strong> (do chính bạn phụ trách, hoặc quản trị với mọi yêu cầu đang thu gom), bạn có thể <strong>hủy</strong>.
       </p>
       <div className="bo-loc">
         <button
@@ -53,9 +87,22 @@ export default function XuLyYeuCau() {
               <p className="the__phu">Cập nhật gần nhất: {new Date(r.updatedAt).toLocaleString('vi-VN')}</p>
               <span className={layLopTrangThai(r.status)}>{TRANG_THAI[r.status]}</span>
             </div>
-            <Link to={`/yeu-cau/${r.id}`} className="nut-chinh" style={{ fontSize: '0.875rem' }}>
-              Xem chi tiết / lịch sử
-            </Link>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center' }}>
+              {coTheHuyBangNhanVien(user, r) && (
+                <button
+                  type="button"
+                  disabled={dangHuyId === r.id}
+                  onClick={() => huyYeuCau(r)}
+                  className="nut-nguy-hiem"
+                  style={{ fontSize: '0.875rem', padding: '0.35rem 0.75rem' }}
+                >
+                  {dangHuyId === r.id ? 'Đang hủy...' : 'Hủy yêu cầu'}
+                </button>
+              )}
+              <Link to={`/yeu-cau/${r.id}`} className="nut-chinh" style={{ fontSize: '0.875rem' }}>
+                Xem chi tiết / lịch sử
+              </Link>
+            </div>
           </div>
         ))}
       </div>

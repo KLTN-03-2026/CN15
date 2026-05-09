@@ -133,6 +133,14 @@ export const yeuCauThuGom = {
   get: (id) => guiYeuCau(`/collections/${id}`),
   huy: (id) => guiYeuCau(`/collections/${id}/cancel`, { method: 'PUT' }),
   cancel: (id) => guiYeuCau(`/collections/${id}/cancel`, { method: 'PUT' }),
+  huyBoiNhanVien: (id, body) => guiYeuCau(`/collections/staff-cancel/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(body && typeof body === 'object' ? body : {}),
+  }),
+  staffCancel: (id, body) => guiYeuCau(`/collections/staff-cancel/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(body && typeof body === 'object' ? body : {}),
+  }),
   nhan: (id) => guiYeuCau(`/collections/${id}/accept`, { method: 'PUT' }),
   accept: (id) => guiYeuCau(`/collections/${id}/accept`, { method: 'PUT' }),
   hoanThanh: (id, body) => guiYeuCau(`/collections/${id}/complete`, { method: 'PUT', body: JSON.stringify(body) }),

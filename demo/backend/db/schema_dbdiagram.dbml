@@ -149,8 +149,10 @@ Table lich_su_doi_thuongs {
   id_phan_thuong varchar [not null]
   diem_su_dung int [not null]
   trang_thai varchar [default: 'completed']
+  ma_xac_nhan varchar [not null, default: '']
+  ghi_chu_thuc_hien varchar
   ngay_tao timestamp [not null]
-  Note: 'Mỗi lần đổi thưởng thành công.'
+  Note: 'Mỗi lần đổi thưởng; ma_xac_nhan/ghi_chu_thuc_hien khớp Prisma.'
 }
 
 // -----------------------------------------------------------------------------

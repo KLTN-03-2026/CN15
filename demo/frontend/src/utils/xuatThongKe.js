@@ -19,6 +19,32 @@ const NHAN_TRANG_THAI = {
   CANCELLED: 'Đã hủy',
 };
 
+/** Chỉ ngày (dd/mm/yyyy), không kèm 00:00:00 trong file xuất. */
+function dinhDangNgayKhongGio(value) {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('vi-VN');
+}
+
+/** Ngày + giờ ngắn cho sheet chi tiết (từng lượt đổi). */
+function dinhDangNgayGioNgan(value) {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+/** Chu kỳ "Tất cả" dùng epoch nội bộ hoặc API trả `startDate: null` — không hiển thị 1970. */
+function laThongKeToanBo(duLieu) {
+  if (duLieu.period === 'all') return true;
+  if (duLieu.startDate == null) return false;
+  return new Date(duLieu.startDate).getTime() === 0;
+}
+
+function hienThiTuNgayBaoCao(duLieu) {
+  if (laThongKeToanBo(duLieu)) return 'Toàn bộ thời gian';
+  return dinhDangNgayKhongGio(duLieu.startDate);
+}
+
 function tenFile(coDinh) {
   const d = new Date();
   const pad = (n) => String(n).padStart(2, '0');
@@ -51,7 +77,8 @@ export function xuatExcel(duLieu, nhanChuKy) {
     ['Báo cáo thống kê — Hệ thống thu gom rác tái chế'],
     [],
     ['Chu kỳ', nhanChuKy],
-    ['Từ thời điểm', new Date(duLieu.startDate).toLocaleString('vi-VN')],
+    ['Từ ngày', hienThiTuNgayBaoCao(duLieu)],
+    ...(duLieu.endDate != null ? [['Đến ngày', dinhDangNgayKhongGio(duLieu.endDate)]] : []),
     [],
     ['Chỉ số', 'Giá trị'],
     ['Tổng yêu cầu', duLieu.totalRequests],
@@ -63,7 +90,6 @@ export function xuatExcel(duLieu, nhanChuKy) {
   ];
   const ws1 = XLSX.utils.aoa_to_sheet(tongHop);
   XLSX.utils.book_append_sheet(wb, ws1, 'Tổng hợp');
-
   const theoTT = [['Trạng thái (mã)', 'Tên hiển thị', 'Số lượng']];
   Object.entries(duLieu.byStatus || {}).forEach(([k, v]) => {
     theoTT.push([k, NHAN_TRANG_THAI[k] || k, v]);
@@ -80,7 +106,6 @@ export function xuatExcel(duLieu, nhanChuKy) {
     const ws3 = XLSX.utils.json_to_sheet(sheetLoai);
     XLSX.utils.book_append_sheet(wb, ws3, 'Theo loại rác');
   }
-
   const sheetPhanThuong = duLieu.byRewardType?.length
     ? duLieu.byRewardType.map((b) => ({
       'Loại báo cáo': 'Đổi thưởng theo loại (Phần thưởng đã đổi theo loại phần thưởng)',
@@ -99,6 +124,56 @@ export function xuatExcel(duLieu, nhanChuKy) {
   const ws4 = XLSX.utils.json_to_sheet(sheetPhanThuong);
   XLSX.utils.book_append_sheet(wb, ws4, 'Đổi thưởng theo loại');
 
+  const chiTiet = Array.isArray(duLieu.rewardRedemptionDetails) ? duLieu.rewardRedemptionDetails : [];
+  const coTongHopDoiThuong = (duLieu.byRewardType || []).some((b) => (Number(b.redemptionCount) || 0) > 0);
+  const hangTieuDeChiTietDoiThuong = [
+    'Mã giao dịch',
+    'Thời gian',
+    'Email khách',
+    'Tên khách',
+    'Phần thưởng',
+    'Điểm niêm yết',
+    'Điểm trừ',
+    'Trạng thái',
+    'Mã xác nhận',
+    'Ghi chú',
+  ];
+  let wsChiTiet;
+  if (chiTiet.length > 0) {
+    wsChiTiet = XLSX.utils.json_to_sheet(
+      chiTiet.map((r) => ({
+        'Mã giao dịch': r.id,
+        'Thời gian': dinhDangNgayGioNgan(r.createdAt),
+        'Email khách': r.customerEmail ?? '',
+        'Tên khách': r.customerName ?? '',
+        'Phần thưởng': r.rewardName ?? '',
+        'Điểm niêm yết': r.rewardPointsCost ?? '',
+        'Điểm trừ': r.pointsSpent,
+        'Trạng thái': r.status ?? '',
+        'Mã xác nhận': r.confirmationCode ?? '',
+        'Ghi chú': r.fulfillmentNote ?? '',
+      })),
+    );
+  } else if (coTongHopDoiThuong && !Array.isArray(duLieu.rewardRedemptionDetails)) {
+    wsChiTiet = XLSX.utils.json_to_sheet([
+      {
+        'Mã giao dịch': '—',
+        'Thời gian': '',
+        'Email khách': '',
+        'Tên khách': 'API chưa trả chi tiết (rewardRedemptionDetails). Khởi động lại backend bản mới.',
+        'Phần thưởng': '',
+        'Điểm niêm yết': '',
+        'Điểm trừ': '',
+        'Trạng thái': '',
+        'Mã xác nhận': '',
+        'Ghi chú': '',
+      },
+    ]);
+  } else {
+    wsChiTiet = XLSX.utils.aoa_to_sheet([hangTieuDeChiTietDoiThuong]);
+  }
+  XLSX.utils.book_append_sheet(wb, wsChiTiet, 'Chi tiết phần thưởng đã đổi');
+
   XLSX.writeFile(wb, `${tenFile('thong-ke')}.xlsx`);
 }
 
@@ -110,6 +185,11 @@ export async function xuatWord(duLieu, nhanChuKy) {
     hangBang(['Đã hoàn thành', duLieu.completedRequests], false),
     hangBang(['Tổng khối lượng (kg)', duLieu.totalWeight ?? 0], false),
     hangBang(['Tổng điểm nhận', duLieu.totalPointsEarned ?? 0], false),
+    hangBang(['Tổng điểm đã dùng', duLieu.totalPointsUsed ?? 0], false),
+  ];
+  const diemDacapRows = [
+    hangBang(['Chỉ số', 'Giá trị'], true),
+    hangBang(['Tổng điểm đã cấp', duLieu.totalPointsEarned ?? 0], false),
     hangBang(['Tổng điểm đã dùng', duLieu.totalPointsUsed ?? 0], false),
   ];
 
@@ -152,15 +232,31 @@ export async function xuatWord(duLieu, nhanChuKy) {
           }),
           new Paragraph({
             children: [
-              new TextRun({ text: 'Từ thời điểm: ', bold: true }),
-              new TextRun(new Date(duLieu.startDate).toLocaleString('vi-VN')),
+              new TextRun({ text: 'Từ ngày: ', bold: true }),
+              new TextRun(hienThiTuNgayBaoCao(duLieu)),
             ],
           }),
+          ...(duLieu.endDate != null
+            ? [
+                new Paragraph({
+                  children: [
+                    new TextRun({ text: 'Đến ngày: ', bold: true }),
+                    new TextRun(dinhDangNgayKhongGio(duLieu.endDate)),
+                  ],
+                }),
+              ]
+            : []),
           new Paragraph({ text: '' }),
           new Paragraph({ children: [new TextRun({ text: 'Tổng hợp', bold: true })] }),
           new Table({
             width: { size: 100, type: WidthType.PERCENTAGE },
             rows: tongHopRows,
+          }),
+          new Paragraph({ text: '' }),
+          new Paragraph({ children: [new TextRun({ text: 'Tổng điểm đã cấp', bold: true })] }),
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: diemDacapRows,
           }),
           new Paragraph({ text: '' }),
           new Paragraph({ children: [new TextRun({ text: 'Theo trạng thái', bold: true })] }),

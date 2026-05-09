@@ -56,7 +56,67 @@ async function main() {
     }
   }
 
-  console.log('Đã gán dữ liệu! Admin: admin@recycling.vn / admin123 | Staff: staff@recycling.vn / staff123');
+  /** Lượt đổi thưởng mẫu — để sheet “Chi tiết phần thưởng đã đổi” / thống kê có dữ liệu khi chưa đổi qua UI */
+  const soDoiHienCo = await prisma.rewardRedemption.count();
+  if (soDoiHienCo === 0) {
+    const matKhauKhach = await bcrypt.hash('customer123', 10);
+    const khach = await prisma.user.upsert({
+      where: { email: 'customer@recycling.vn' },
+      update: {},
+      create: {
+        email: 'customer@recycling.vn',
+        password: matKhauKhach,
+        fullName: 'Khách hàng demo',
+        role: 'CUSTOMER',
+        points: 5000,
+      },
+    });
+    const thuong = await prisma.reward.findFirst({ where: { name: 'Phiếu mua sắm 50k' } })
+      ?? await prisma.reward.findFirst({ orderBy: { pointsCost: 'asc' } });
+    if (thuong) {
+      const homNay = new Date();
+      const ngay = (soNgayTruoc) => {
+        const x = new Date(homNay);
+        x.setDate(x.getDate() - soNgayTruoc);
+        x.setHours(10, 30, 0, 0);
+        return x;
+      };
+      await prisma.rewardRedemption.createMany({
+        data: [
+          {
+            userId: khach.id,
+            rewardId: thuong.id,
+            pointsSpent: thuong.pointsCost,
+            status: 'completed',
+            confirmationCode: 'SEED-DEMO-1',
+            fulfillmentNote: 'Dữ liệu mẫu (chạy prisma:seed)',
+            createdAt: ngay(0),
+          },
+          {
+            userId: khach.id,
+            rewardId: thuong.id,
+            pointsSpent: thuong.pointsCost,
+            status: 'completed',
+            confirmationCode: 'SEED-DEMO-2',
+            fulfillmentNote: 'Dữ liệu mẫu (chạy prisma:seed)',
+            createdAt: ngay(3),
+          },
+          {
+            userId: khach.id,
+            rewardId: thuong.id,
+            pointsSpent: thuong.pointsCost,
+            status: 'completed',
+            confirmationCode: 'SEED-DEMO-3',
+            fulfillmentNote: 'Dữ liệu mẫu (chạy prisma:seed)',
+            createdAt: ngay(12),
+          },
+        ],
+      });
+      console.log('Đã thêm 3 lượt đổi thưởng mẫu (customer@recycling.vn / customer123).');
+    }
+  }
+
+  console.log('Đã gán dữ liệu! Admin: admin@recycling.vn / admin123 | Staff: staff@recycling.vn / staff123 | Khách: customer@recycling.vn / customer123');
 }
 
 main()

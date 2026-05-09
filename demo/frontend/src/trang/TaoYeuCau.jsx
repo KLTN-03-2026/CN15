@@ -13,8 +13,19 @@ export default function TaoYeuCau() {
   const [loi, setLoi] = useState('');
   const [ketQuaAI, setKetQuaAI] = useState(null); // { suggestedWasteTypeId, suggestedWasteTypeName, suggestedQuantity, confidence, moTaChiTiet }
 
+  const taiDanhSachLoaiRac = () => {
+    wasteTypes.list().then(setDanhSachLoaiRac).catch(() => setDanhSachLoaiRac([]));
+  };
+
   useEffect(() => {
-    wasteTypes.list().then(setDanhSachLoaiRac);
+    taiDanhSachLoaiRac();
+    const capNhat = () => taiDanhSachLoaiRac();
+    window.addEventListener('focus', capNhat);
+    window.addEventListener('waste-types-updated', capNhat);
+    return () => {
+      window.removeEventListener('focus', capNhat);
+      window.removeEventListener('waste-types-updated', capNhat);
+    };
   }, []);
 
   const phanTichAI = async (file) => {

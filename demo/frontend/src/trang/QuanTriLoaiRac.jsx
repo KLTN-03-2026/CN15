@@ -8,7 +8,7 @@ export default function QuanTriLoaiRac() {
   const [thongBao, setThongBao] = useState('');
 
   useEffect(() => {
-    wasteTypes.list(true).then(setDanhSach);
+    wasteTypes.list().then(setDanhSach);
   }, []);
 
   const luu = async (e) => {
@@ -16,13 +16,14 @@ export default function QuanTriLoaiRac() {
     setThongBao('');
     try {
       if (idSua) {
-        await wasteTypes.update(idSua, form);
+        await wasteTypes.update(idSua, { ...form, isActive: true });
       } else {
         await wasteTypes.create(form);
       }
       setIdSua(null);
       setForm({ name: '', description: '', pointsPerKg: '' });
-      wasteTypes.list(true).then(setDanhSach);
+      wasteTypes.list().then(setDanhSach);
+      window.dispatchEvent(new CustomEvent('waste-types-updated'));
     } catch (ex) {
       setThongBao(ex.message);
     }
@@ -32,7 +33,8 @@ export default function QuanTriLoaiRac() {
     if (!confirm('Vô hiệu hóa loại rác?')) return;
     try {
       await wasteTypes.delete(id);
-      wasteTypes.list(true).then(setDanhSach);
+      wasteTypes.list().then(setDanhSach);
+      window.dispatchEvent(new CustomEvent('waste-types-updated'));
     } catch (ex) {
       alert(ex.message);
     }
